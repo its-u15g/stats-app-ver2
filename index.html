@@ -528,7 +528,7 @@
         </div>
       </div>
 
-      <!-- 選手選択エリア（ご要望を反映） -->
+      <!-- 選手選択エリア -->
       <div class="player-select-wrap">
         <div class="panel-header">
           <span id="playerSelectTitle">②誰が(自チームの選手を選択)</span>
@@ -599,7 +599,7 @@
       </div>
     </section>
 
-    <!-- 右ペイン: 分析・確認画面 -->
+    <!-- 右ペイン: 分析・確認エリア -->
     <section class="right-panel" id="panelAnalysis">
       <div class="right-tabs">
         <button id="tabBtnDash" onclick="switchRightTab('dash')" class="tab-btn active">📊 分析</button>
@@ -651,7 +651,7 @@
         <div class="table-box">
           <table class="stats-table">
             <thead>
-              <tr><th>#</th><th>名前</th><th>得点/試投</th><th>決定率</th><th>7m</th><th>守備</th><th>TO</th><th>退場</th><th>GK</th><th>HPI</th></tr>
+              <tr><th>No.</th><th>名前</th><th>得点/試投</th><th>決定率</th><th>7m</th><th>守備</th><th>TO</th><th>退場</th><th>GK</th><th>HPI</th></tr>
             </thead>
             <tbody id="homePlayerStatsBody"></tbody>
           </table>
@@ -661,7 +661,7 @@
         <div class="table-box">
           <table class="stats-table">
             <thead>
-              <tr><th>#</th><th>名前</th><th>得点/試投</th><th>決定率</th><th>7m</th><th>TO</th><th>退場</th><th>GK</th></tr>
+              <tr><th>No.</th><th>名前</th><th>得点/試投</th><th>決定率</th><th>7m</th><th>TO</th><th>退場</th><th>GK</th></tr>
             </thead>
             <tbody id="guestPlayerStatsBody"></tbody>
           </table>
@@ -697,9 +697,14 @@
         </div>
       </div>
 
+      <!-- 交代（ベンチ管理）エリア：チーム切替対応 -->
       <div id="tabContentBench" class="right-content" style="display: none;">
+        <div style="display: flex; gap: 6px; margin-bottom: 4px;">
+          <button id="btnBenchTeamHome" onclick="switchBenchTeam('home')" class="btn-secondary" style="flex: 1; background: #312e81; color: #fff; border-color: #6366f1;">自チーム 交代</button>
+          <button id="btnBenchTeamGuest" onclick="switchBenchTeam('guest')" class="btn-secondary" style="flex: 1;">相手チーム 交代</button>
+        </div>
         <div class="card-panel">
-          <div class="panel-header"><span>① コート上の選手（下げる選手をタップ）</span></div>
+          <div class="panel-header"><span id="benchCourtTitle">① コート上の選手（下げる選手をタップ）</span></div>
           <div id="benchCourtGrid" class="player-court-layout"></div>
         </div>
         <div class="card-panel">
@@ -720,7 +725,7 @@
       </div>
       <div style="margin-bottom: 10px;">
         <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">自チーム選手一括登録 (背番号 選手名)</label>
-        <textarea id="bulkRosterHome" rows="5" style="width: 100%; background: #020617; border: 1px solid #334155; padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
+        <textarea id="bulkRosterHome" rows="8" style="width: 100%; background: #020617; border: 1px solid #334155; padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
       </div>
       <div style="margin-bottom: 8px;">
         <label style="font-size: 10px; color: #94a3b8;">相手チーム名</label>
@@ -728,7 +733,7 @@
       </div>
       <div style="margin-bottom: 10px;">
         <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">相手チーム選手一括登録</label>
-        <textarea id="bulkRosterGuest" rows="4" style="width: 100%; background: #020617; border: 1px solid #334155; padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
+        <textarea id="bulkRosterGuest" rows="8" style="width: 100%; background: #020617; border: 1px solid #334155; padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
         <button onclick="resetRosterToDefault()" class="btn-danger" style="font-size: 10px;">初期状態</button>
@@ -743,6 +748,7 @@
   <div id="toast">通知</div>
 
   <script>
+    // 基本人数を各14名に設定（GK, LW, PV, RW, LB, CB, RB + 控え7名）
     const DEFAULT_TEAMS = {
       home: {
         name: 'ITS U-15G',
@@ -752,7 +758,8 @@
           LB: { number: '5', name: 'エースLB' }, CB: { number: '6', name: '司令塔CB' }, RB: { number: '7', name: 'ライトRB' }
         },
         bench: [
-          { number: '8', name: '控え8' }, { number: '9', name: '控え9' }, { number: '10', name: '控え10' }, { number: '12', name: '第2GK' }
+          { number: '8', name: '控え8' }, { number: '9', name: '控え9' }, { number: '10', name: '控え10' },
+          { number: '11', name: '控え11' }, { number: '12', name: '第2GK' }, { number: '13', name: '控え13' }, { number: '14', name: '控え14' }
         ]
       },
       guest: {
@@ -763,7 +770,8 @@
           LB: { number: '17', name: '相手LB' }, CB: { number: '18', name: '相手CB' }, RB: { number: '19', name: '相手RB' }
         },
         bench: [
-          { number: '20', name: '相手控え20' }, { number: '21', name: '相手控え21' }
+          { number: '20', name: '相手控え20' }, { number: '21', name: '相手控え21' }, { number: '22', name: '相手控え22' },
+          { number: '23', name: '相手控え23' }, { number: '24', name: '相手控え24' }, { number: '25', name: '相手控え25' }, { number: '26', name: '相手控え26' }
         ]
       }
     };
@@ -774,6 +782,8 @@
     let selectedDefender = null;
     let selectedZone = '②カットイン・PV';
     let logs = [];
+
+    let currentBenchTeam = 'home'; // 交代対象チーム（home / guest）
 
     let timerSeconds = 0;
     let isTimerRunning = false;
@@ -833,7 +843,7 @@
         document.getElementById('btnHalf').textContent = currentHalf;
         updateTimerDisplay();
         document.getElementById('btnTimerCtrl').textContent = "開始";
-        document.getElementById('btnTimerCtrl', '').className = "btn-timer-ctrl";
+        document.getElementById('btnTimerCtrl').className = "btn-timer-ctrl";
       }
     }
 
@@ -881,7 +891,7 @@
       renderDefenderCards();
     }
 
-    // コート配置（2段：前線4名［GK, LW, PV, RW］ / 後方3名［LB, CB, RB］）に合わせたカード描画
+    // 「#」から「No.」へ変更
     function renderPlayerCardsGrid(team, targetTeamKey, selectedObj, containerId, isDefender = false) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -895,8 +905,8 @@
       const cb = { ...team.court.CB, posKey: 'CB' };
       const rb = { ...team.court.RB, posKey: 'RB' };
 
-      const row1 = [gk, lw, pv, rw]; // 1段目 (GK + 前線3)
-      const row2 = [lb, cb, rb];       // 2段目 (バック陣3)
+      const row1 = [gk, lw, pv, rw]; 
+      const row2 = [lb, cb, rb];       
 
       const createCardDiv = (p) => {
         const isSel = selectedObj && String(selectedObj.number) === String(p.number) && (!isDefender || selectedObj.teamKey === targetTeamKey);
@@ -905,7 +915,7 @@
         const card = document.createElement('div');
         card.className = `player-card ${activeClass}`;
         card.innerHTML = `
-          <div class="p-num">#${escapeHTML(p.number)}</div>
+          <div class="p-num">No.${escapeHTML(p.number)}</div>
           <div class="p-name">${escapeHTML(p.name)}</div>
         `;
         card.onclick = () => {
@@ -1212,6 +1222,7 @@
       }[ch]));
     }
 
+    // 「No.」表記
     function renderLogs() {
       const tbody = document.getElementById('logTableBody');
       const q = (document.getElementById('logSearchInput')?.value || '').toLowerCase().trim();
@@ -1224,7 +1235,7 @@
         tr.innerHTML = `
           <td>${escapeHTML(l.timeStr)}</td>
           <td style="color:${l.team === 'home' ? '#818cf8' : '#fb7185'}; font-weight:700;">${escapeHTML(l.teamName)}</td>
-          <td>#${escapeHTML(l.num)} ${escapeHTML(l.name)}</td>
+          <td>No.${escapeHTML(l.num)} ${escapeHTML(l.name)}</td>
           <td style="font-weight:700;">${escapeHTML(l.result)}</td>
           <td>${escapeHTML(l.zone)}</td>
           <td><button onclick="deleteLogById('${l.id}')" style="background:#450a0a; color:#fca5a5; font-size:9px; padding:1px 4px;">削</button></td>
@@ -1315,6 +1326,7 @@
       });
     }
 
+    // 「No.」表記
     function renderPlayerStats(teamLogs, containerId, oppShots, teamKey) {
       const tbody = document.getElementById(containerId);
       tbody.innerHTML = '';
@@ -1335,7 +1347,7 @@
       nums.forEach(n => {
         const pLogs = teamLogs.filter(l => String(l.num) === String(n));
         const rosterPlayer = roster.find(p => String(p.number) === String(n));
-        const name = pLogs.length > 0 ? pLogs[0].name : (rosterPlayer ? rosterPlayer.name : `#${n}`);
+        const name = pLogs.length > 0 ? pLogs[0].name : (rosterPlayer ? rosterPlayer.name : `No.${n}`);
         const shots = pLogs.filter(l => l.category === 'シュート');
         const goals = shots.filter(l => l.result === 'ゴール').length;
         const att = shots.length;
@@ -1355,7 +1367,6 @@
         const foul2m = pLogs.filter(l => l.result === '2分退場').length;
         const faced = oppShots.filter(l => String(l.oppGkNum) === String(n));
         const saves = faced.filter(l => l.result === 'GKセーブ').length;
-        const gkPct = faced.length > 0 ? Math.round((saves / faced.length) * 100) : 0;
 
         const misses = att - goals;
         const hpiScore = (goals * 3) + (gained7m * 2) + (defenseSuccess * 2) + (saves * 3) - (misses * 1) - (to * 2) - (foul2m * 3) - (conceded7m * 1);
@@ -1363,7 +1374,7 @@
         const tr = document.createElement('tr');
         if (teamKey === 'home') {
           tr.innerHTML = `
-            <td><strong>#${escapeHTML(n)}</strong></td><td>${escapeHTML(name)}</td><td>${goals}/${att}</td>
+            <td><strong>No.${escapeHTML(n)}</strong></td><td>${escapeHTML(name)}</td><td>${goals}/${att}</td>
             <td style="color:${rate >= 60 ? '#34d399' : '#fff'};">${rate}%</td>
             <td style="color:#38bdf8;">${gained7m}</td>
             <td style="color:#34d399;">${defenseSuccess}</td>
@@ -1373,7 +1384,7 @@
           `;
         } else {
           tr.innerHTML = `
-            <td><strong>#${escapeHTML(n)}</strong></td><td>${escapeHTML(name)}</td><td>${goals}/${att}</td>
+            <td><strong>No.${escapeHTML(n)}</strong></td><td>${escapeHTML(name)}</td><td>${goals}/${att}</td>
             <td style="color:${rate >= 60 ? '#34d399' : '#fff'};">${rate}%</td>
             <td style="color:#38bdf8;">${gained7m}</td>
             <td style="color:#f87171;">${to}</td><td style="color:#fbbf24;">${foul2m}</td>
@@ -1415,21 +1426,41 @@
       });
     }
 
+    // 交代画面のチーム切り替え関数
+    function switchBenchTeam(teamKey) {
+      currentBenchTeam = teamKey;
+      playerToSubOut = null;
+      const btnHome = document.getElementById('btnBenchTeamHome');
+      const btnGuest = document.getElementById('btnBenchTeamGuest');
+      if (teamKey === 'home') {
+        btnHome.style.background = '#312e81'; btnHome.style.color = '#fff'; btnHome.style.borderColor = '#6366f1';
+        btnGuest.style.background = '#1e293b'; btnGuest.style.color = '#cbd5e1'; btnGuest.style.borderColor = '#334155';
+      } else {
+        btnGuest.style.background = '#881337'; btnGuest.style.color = '#fff'; btnGuest.style.borderColor = '#f43f5e';
+        btnHome.style.background = '#1e293b'; btnHome.style.color = '#cbd5e1'; btnHome.style.borderColor = '#334155';
+      }
+      renderBenchManager();
+    }
+
     let playerToSubOut = null;
+    // 自チーム・相手チーム両対応の交代マネージャー
     function renderBenchManager() {
       const courtGrid = document.getElementById('benchCourtGrid');
       const benchGrid = document.getElementById('benchReserveGrid');
+      if (!courtGrid || !benchGrid) return;
       courtGrid.innerHTML = '';
       benchGrid.innerHTML = '';
 
-      const th = teamsData.home;
-      const gk = { ...th.gk, pos: 'GK' };
-      const lw = { ...th.court.LW, pos: 'LW' };
-      const pv = { ...th.court.PV, pos: 'PV' };
-      const rw = { ...th.court.RW, pos: 'RW' };
-      const lb = { ...th.court.LB, pos: 'LB' };
-      const cb = { ...th.court.CB, pos: 'CB' };
-      const rb = { ...th.court.RB, pos: 'RB' };
+      const targetTeam = teamsData[currentBenchTeam];
+      document.getElementById('benchCourtTitle').textContent = `① ${targetTeam.name} コート上の選手（下げる選手をタップ）`;
+
+      const gk = { ...targetTeam.gk, pos: 'GK' };
+      const lw = { ...targetTeam.court.LW, pos: 'LW' };
+      const pv = { ...targetTeam.court.PV, pos: 'PV' };
+      const rw = { ...targetTeam.court.RW, pos: 'RW' };
+      const lb = { ...targetTeam.court.LB, pos: 'LB' };
+      const cb = { ...targetTeam.court.CB, pos: 'CB' };
+      const rb = { ...targetTeam.court.RB, pos: 'RB' };
 
       const row1 = [gk, lw, pv, rw];
       const row2 = [lb, cb, rb];
@@ -1437,12 +1468,12 @@
       const createBenchCard = (p) => {
         const isSel = playerToSubOut && String(playerToSubOut.number) === String(p.number);
         const card = document.createElement('div');
-        card.className = `player-card ${isSel ? 'active' : ''}`;
-        card.innerHTML = `<div class="p-num">#${escapeHTML(p.number)}</div><div class="p-name">${escapeHTML(p.name)}</div>`;
+        card.className = `player-card ${isSel ? (currentBenchTeam === 'home' ? 'active' : 'active-opp') : ''}`;
+        card.innerHTML = `<div class="p-num">No.${escapeHTML(p.number)}</div><div class="p-name">${escapeHTML(p.name)}</div>`;
         card.onclick = () => {
           playerToSubOut = p;
           renderBenchManager();
-          showToast(`下げる選手: #${p.number}`);
+          showToast(`下げる選手: No.${p.number}`);
         };
         return card;
       };
@@ -1458,10 +1489,10 @@
       courtGrid.appendChild(div1);
       courtGrid.appendChild(div2);
 
-      th.bench.forEach((b, index) => {
+      targetTeam.bench.forEach((b, index) => {
         const card = document.createElement('div');
         card.className = 'bench-card';
-        card.innerHTML = `<div class="p-num" style="color:#38bdf8;">#${escapeHTML(b.number)}</div><div class="p-name">${escapeHTML(b.name)}</div>`;
+        card.innerHTML = `<div class="p-num" style="color:${currentBenchTeam === 'home' ? '#38bdf8' : '#fb7185'};">No.${escapeHTML(b.number)}</div><div class="p-name">${escapeHTML(b.name)}</div>`;
         card.onclick = () => {
           if (!playerToSubOut) {
             alert("上のコート上の選手をタップしてください。");
@@ -1474,24 +1505,25 @@
     }
 
     function executeSub(outPlayer, inPlayer, benchIndex) {
-      const th = teamsData.home;
+      const targetTeam = teamsData[currentBenchTeam];
       if (outPlayer.pos === 'GK') {
-        th.homeGkTemp = th.gk;
-        th.gk = inPlayer;
-        th.bench[benchIndex] = th.homeGkTemp;
+        const tempGk = targetTeam.gk;
+        targetTeam.gk = inPlayer;
+        targetTeam.bench[benchIndex] = tempGk;
       } else {
         const posKeyMap = { 'LW': 'LW', 'PV': 'PV', 'RW': 'RW', 'LB': 'LB', 'CB': 'CB', 'RB': 'RB' };
         const pos = posKeyMap[outPlayer.posKey || outPlayer.pos];
         if (pos) {
-          th.bench[benchIndex] = th.court[pos];
-          th.court[pos] = inPlayer;
+          targetTeam.bench[benchIndex] = targetTeam.court[pos];
+          targetTeam.court[pos] = inPlayer;
         }
       }
       playerToSubOut = null;
       saveLocal();
       renderPlayerCards();
       renderDefenderCards();
-      showToast(`交代完了`);
+      renderBenchManager();
+      showToast(`${targetTeam.name} 交代完了`);
     }
 
     function switchRightTab(tabKey) {
