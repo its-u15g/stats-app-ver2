@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ITS U-15 | ハンドボールリアルタイム分析</title>
+  <title>ITS U-15G | ハンドボールリアルタイム分析PRO</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
@@ -75,7 +75,7 @@
     .btn-timer-ctrl { background: #059669; color: #fff; font-size: 9px; padding: 3px 6px; font-weight: 700; }
     .btn-timer-ctrl.running { background: #dc2626; }
 
-    /* スマホ用ビュー切り替えバー（画面幅が狭い場合のみ表示） */
+    /* スマホ用ビュー切り替えバー（700px以下のみ表示） */
     .mobile-view-bar {
       display: none;
       background: #020617;
@@ -99,7 +99,7 @@
     }
     .btn-m-view.active { background: #0284c7; color: #fff; }
 
-    /* ================= メイン画面（デフォルト: 左右2カラム） ================= */
+    /* ================= メイン画面（左右2カラム） ================= */
     main {
       flex: 1;
       display: grid;
@@ -108,7 +108,6 @@
       height: calc(100vh - 48px);
     }
 
-    /* 左ペイン: 入力エリア */
     .left-panel {
       background: #0b1120;
       border-right: 1px solid #1e293b;
@@ -120,12 +119,11 @@
       gap: 5px;
     }
 
-    /* フェーズ切り替え */
     .phase-bar {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 6px;
-      height: 36px;
+      height: 34px;
       flex-shrink: 0;
     }
     .btn-phase {
@@ -162,7 +160,7 @@
     .court-board {
       position: relative;
       width: 100%;
-      height: 145px;
+      height: 130px;
       background: #0f1e36;
       border: 2px solid #334155;
       border-radius: 5px;
@@ -192,26 +190,26 @@
       position: absolute;
       top: 0; left: 50%;
       transform: translateX(-50%);
-      width: 220px;
-      height: 55px;
+      width: 200px;
+      height: 50px;
       border-bottom: 2px solid #38bdf8;
       border-left: 2px solid #38bdf8;
       border-right: 2px solid #38bdf8;
-      border-bottom-left-radius: 110px 55px;
-      border-bottom-right-radius: 110px 55px;
+      border-bottom-left-radius: 100px 50px;
+      border-bottom-right-radius: 100px 50px;
       pointer-events: none;
     }
     .court-9m-arc {
       position: absolute;
       top: 0; left: 50%;
       transform: translateX(-50%);
-      width: 300px;
-      height: 90px;
+      width: 280px;
+      height: 80px;
       border-bottom: 2px dashed rgba(56, 189, 248, 0.4);
       border-left: 2px dashed rgba(56, 189, 248, 0.4);
       border-right: 2px dashed rgba(56, 189, 248, 0.4);
-      border-bottom-left-radius: 150px 90px;
-      border-bottom-right-radius: 150px 90px;
+      border-bottom-left-radius: 140px 80px;
+      border-bottom-right-radius: 140px 80px;
       pointer-events: none;
     }
     .court-hotspots {
@@ -228,7 +226,7 @@
       background: rgba(15, 23, 42, 0.85);
       border: 1px solid rgba(51, 65, 85, 0.85);
       color: #e2e8f0;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
       display: flex;
       align-items: center;
@@ -242,37 +240,46 @@
       box-shadow: 0 0 6px rgba(99, 102, 241, 0.6);
     }
     .btn-7m-slot {
-      height: 16px;
+      height: 15px;
       background: rgba(2, 132, 199, 0.5);
       border: 1px solid #0284c7;
       color: #bae6fd;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 800;
       margin: 0 auto;
-      width: 110px;
+      width: 100px;
     }
     .btn-7m-slot.active { background: #0284c7; color: #fff; border-color: #38bdf8; }
 
-    /* ② 選手選択（7名横並び） */
+    /* ② 選手選択（2段コート配置） */
     .player-select-wrap { flex-shrink: 0; }
-    .player-grid {
+    .player-court-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .player-row-4 {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3px;
+    }
+    .player-row-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 3px;
     }
     .player-card {
       background: #1e293b;
       border: 1px solid #334155;
-      padding: 4px 1px;
+      padding: 5px 2px;
       text-align: center;
       border-radius: 4px;
       cursor: pointer;
     }
     .player-card.active { background: #312e81; border-color: #6366f1; }
     .player-card.active-opp { background: #881337; border-color: #f43f5e; }
-    .p-num { font-size: 12px; font-weight: 800; color: #fff; font-family: monospace; }
-    .p-name { font-size: 8px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .p-pos { font-size: 7px; color: #64748b; font-weight: 700; }
+    .p-num { font-size: 13px; font-weight: 800; color: #fff; font-family: monospace; }
+    .p-name { font-size: 9px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
     /* ③ 結果ボタンエリア */
     .action-container {
@@ -286,7 +293,7 @@
       display: grid;
       grid-template-columns: 1.2fr 1.2fr 1fr 1fr 1.2fr;
       gap: 4px;
-      height: 40px;
+      height: 38px;
       flex-shrink: 0;
     }
     .btn-act {
@@ -310,7 +317,7 @@
       grid-template-columns: repeat(4, 1fr);
       gap: 3px;
       flex: 1;
-      min-height: 55px;
+      min-height: 50px;
     }
     .btn-sub {
       background: #1e293b;
@@ -332,7 +339,7 @@
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 3px;
-      height: 26px;
+      height: 24px;
       flex-shrink: 0;
     }
     .btn-pen {
@@ -441,29 +448,14 @@
     .btn-success { background: #059669; color: #fff; padding: 4px 10px; font-weight: 700; font-size: 10px; }
     .btn-danger { background: #b91c1c; color: #fff; padding: 4px 10px; font-size: 10px; font-weight: 700; }
 
-    /* ================= スマホ用レスポンシブ（700px以下に修正） ================= */
+    /* スマホ用レスポンシブ（700px以下） */
     @media (max-width: 700px) {
-      .mobile-view-bar {
-        display: grid;
-      }
-      main {
-        display: block;
-        height: calc(100vh - 48px - 40px);
-      }
-      .left-panel {
-        height: 100%;
-        display: flex !important;
-      }
-      .right-panel {
-        height: 100%;
-        display: none !important;
-      }
-      body.show-analysis .left-panel {
-        display: none !important;
-      }
-      body.show-analysis .right-panel {
-        display: flex !important;
-      }
+      .mobile-view-bar { display: grid; }
+      main { display: block; height: calc(100vh - 48px - 40px); }
+      .left-panel { height: 100%; display: flex !important; }
+      .right-panel { height: 100%; display: none !important; }
+      body.show-analysis .left-panel { display: none !important; }
+      body.show-analysis .right-panel { display: flex !important; }
     }
   </style>
 </head>
@@ -493,7 +485,6 @@
     </div>
   </header>
 
-  <!-- スマホ専用：画面切替バー（700px以下でのみ表示） -->
   <div class="mobile-view-bar">
     <button id="mTabInput" onclick="switchMobileView('input')" class="btn-m-view active">⚡ 入力操作画面</button>
     <button id="mTabAnalysis" onclick="switchMobileView('analysis')" class="btn-m-view">📊 分析・ログ確認</button>
@@ -501,8 +492,6 @@
 
   <!-- ==================== MAIN ==================== -->
   <main>
-    
-    <!-- 左ペイン: 入力画面 -->
     <section class="left-panel" id="panelInput">
       <div class="phase-bar">
         <button id="btnPhaseOF" onclick="setPhase('OF')" class="btn-phase active-of">自チーム 攻撃 (OF)</button>
@@ -534,29 +523,31 @@
             <button onclick="setZone('⑨右側ロング', this)" class="btn-court-zone">⑨ 右側ロング</button>
           </div>
           <div style="display: flex; justify-content: center; width: 100%;">
-            <button onclick="setZone('⚡速攻(FB)', this)" class="btn-court-zone" style="height: 15px; font-size: 8px; width: 110px; background: rgba(30, 41, 59, 0.9);">⚡ 速攻 (FB)</button>
+            <button onclick="setZone('⚡速攻(FB)', this)" class="btn-court-zone" style="height: 14px; font-size: 8px; width: 100px; background: rgba(30, 41, 59, 0.9);">⚡ 速攻 (FB)</button>
           </div>
         </div>
       </div>
 
-      <!-- 選手選択エリア -->
+      <!-- 選手選択エリア（ご要望を反映） -->
       <div class="player-select-wrap">
         <div class="panel-header">
-          <span id="playerSelectTitle">② 誰が (自チーム選手を選択)</span>
+          <span id="playerSelectTitle">②誰が(自チームの選手を選択)</span>
           <div style="display: flex; gap: 4px;">
             <button onclick="switchRightTab('bench'); if(window.innerWidth<=700) switchMobileView('analysis');" class="btn-secondary" style="font-size: 9px; padding: 1px 5px;">交代</button>
             <button onclick="clearSelectedPlayer()" class="btn-secondary" style="font-size: 9px; padding: 1px 5px;">解除</button>
           </div>
         </div>
-        <div id="activePlayerGrid" class="player-grid"></div>
+        
+        <!-- コート配置の2段レイアウト容器 -->
+        <div id="activePlayerGrid" class="player-court-layout"></div>
 
-        <!-- DF時専用：守備を行った自チーム選手を選ぶグリッド -->
+        <!-- DF時専用：守備担当選択容器 -->
         <div id="defenderSelectContainer" style="display: none; margin-top: 4px;">
           <div style="font-size: 9px; color: #f43f5e; font-weight: 700; margin-bottom: 2px; display: flex; justify-content: space-between; align-items: center;">
             <span>🛡️ 守備担当（自チーム選手を選択）</span>
             <button onclick="clearSelectedDefender()" class="btn-secondary" style="font-size: 8px; padding: 1px 4px;">解除</button>
           </div>
-          <div id="defenderPlayerGrid" class="player-grid"></div>
+          <div id="defenderPlayerGrid" class="player-court-layout"></div>
         </div>
       </div>
 
@@ -709,7 +700,7 @@
       <div id="tabContentBench" class="right-content" style="display: none;">
         <div class="card-panel">
           <div class="panel-header"><span>① コート上の選手（下げる選手をタップ）</span></div>
-          <div id="benchCourtGrid" class="player-grid"></div>
+          <div id="benchCourtGrid" class="player-court-layout"></div>
         </div>
         <div class="card-panel">
           <div class="panel-header"><span>② ベンチ控え（出す選手をタップ）</span></div>
@@ -790,7 +781,6 @@
     let currentHalf = '前半';
     let halfSeconds = { '前半': 0, '後半': 0 };
 
-    /* スマホ用画面切り替え */
     function switchMobileView(viewType) {
       const btnIn = document.getElementById('mTabInput');
       const btnAn = document.getElementById('mTabAnalysis');
@@ -843,7 +833,7 @@
         document.getElementById('btnHalf').textContent = currentHalf;
         updateTimerDisplay();
         document.getElementById('btnTimerCtrl').textContent = "開始";
-        document.getElementById('btnTimerCtrl').className = "btn-timer-ctrl";
+        document.getElementById('btnTimerCtrl', '').className = "btn-timer-ctrl";
       }
     }
 
@@ -877,81 +867,86 @@
         btnDF.className = "btn-phase";
         boxOF.style.display = "flex";
         boxDF.style.display = "none";
-        title.textContent = `② 誰が (${teamsData.home.name}選手選択)`;
+        title.textContent = `②誰が(自チームの選手を選択)`;
         if (defenderContainer) defenderContainer.style.display = "none";
       } else {
         btnDF.className = "btn-phase active-df";
         btnOF.className = "btn-phase";
         boxDF.style.display = "flex";
         boxOF.style.display = "none";
-        title.textContent = `② 相手選手 (${teamsData.guest.name}選手選択)`;
+        title.textContent = `②誰が(相手チームの選手を選択)`;
         if (defenderContainer) defenderContainer.style.display = "block";
       }
       renderPlayerCards();
       renderDefenderCards();
     }
 
-    function renderPlayerCards() {
-      const grid = document.getElementById('activePlayerGrid');
-      grid.innerHTML = '';
+    // コート配置（2段：前線4名［GK, LW, PV, RW］ / 後方3名［LB, CB, RB］）に合わせたカード描画
+    function renderPlayerCardsGrid(team, targetTeamKey, selectedObj, containerId, isDefender = false) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
 
-      const targetTeamKey = (currentPhase === 'OF') ? 'home' : 'guest';
-      const targetTeam = teamsData[targetTeamKey];
+      const gk = { ...team.gk, posKey: 'GK' };
+      const lw = { ...team.court.LW, posKey: 'LW' };
+      const pv = { ...team.court.PV, posKey: 'PV' };
+      const rw = { ...team.court.RW, posKey: 'RW' };
+      const lb = { ...team.court.LB, posKey: 'LB' };
+      const cb = { ...team.court.CB, posKey: 'CB' };
+      const rb = { ...team.court.RB, posKey: 'RB' };
 
-      const allCourtPlayers = [
-        { ...targetTeam.gk, pos: 'GK' },
-        ...Object.keys(targetTeam.court).map(pos => ({ ...targetTeam.court[pos], pos: pos }))
-      ];
+      const row1 = [gk, lw, pv, rw]; // 1段目 (GK + 前線3)
+      const row2 = [lb, cb, rb];       // 2段目 (バック陣3)
 
-      allCourtPlayers.forEach(p => {
-        const isSel = selectedPlayer && selectedPlayer.number === p.number && selectedPlayer.teamKey === targetTeamKey;
-        const activeClass = isSel ? (currentPhase === 'OF' ? 'active' : 'active-opp') : '';
+      const createCardDiv = (p) => {
+        const isSel = selectedObj && String(selectedObj.number) === String(p.number) && (!isDefender || selectedObj.teamKey === targetTeamKey);
+        const activeClass = isSel ? (isDefender || targetTeamKey === 'home' ? 'active' : 'active-opp') : '';
 
         const card = document.createElement('div');
         card.className = `player-card ${activeClass}`;
         card.innerHTML = `
-          <div class="p-pos">${escapeHTML(p.pos)}</div>
           <div class="p-num">#${escapeHTML(p.number)}</div>
           <div class="p-name">${escapeHTML(p.name)}</div>
         `;
         card.onclick = () => {
-          if (selectedPlayer && selectedPlayer.number === p.number && selectedPlayer.teamKey === targetTeamKey) {
-            selectedPlayer = null;
+          if (isDefender) {
+            selectedDefender = isSel ? null : { ...p, teamKey: 'home' };
+            renderDefenderCards();
           } else {
-            selectedPlayer = { ...p, teamKey: targetTeamKey };
+            if (selectedPlayer && String(selectedPlayer.number) === String(p.number) && selectedPlayer.teamKey === targetTeamKey) {
+              selectedPlayer = null;
+            } else {
+              selectedPlayer = { ...p, teamKey: targetTeamKey };
+            }
+            renderPlayerCards();
           }
-          renderPlayerCards();
         };
-        grid.appendChild(card);
-      });
+        return card;
+      };
 
-      renderBenchManager();
+      const div1 = document.createElement('div');
+      div1.className = 'player-row-4';
+      row1.forEach(p => div1.appendChild(createCardDiv(p)));
+
+      const div2 = document.createElement('div');
+      div2.className = 'player-row-3';
+      row2.forEach(p => div2.appendChild(createCardDiv(p)));
+
+      container.appendChild(div1);
+      container.appendChild(div2);
+
+      if (!isDefender) renderBenchManager();
+    }
+
+    function renderPlayerCards() {
+      const targetTeamKey = (currentPhase === 'OF') ? 'home' : 'guest';
+      const targetTeam = teamsData[targetTeamKey];
+      renderPlayerCardsGrid(targetTeam, targetTeamKey, selectedPlayer, 'activePlayerGrid', false);
     }
 
     function renderDefenderCards() {
-      const grid = document.getElementById('defenderPlayerGrid');
-      if (!grid) return;
-      grid.innerHTML = '';
-
       if (currentPhase !== 'DF') return;
-
-      const team = teamsData.home;
-      const players = [
-        { ...team.gk, pos: 'GK' },
-        ...Object.keys(team.court).map(pos => ({ ...team.court[pos], pos }))
-      ];
-
-      players.forEach(p => {
-        const isSel = selectedDefender && String(selectedDefender.number) === String(p.number);
-        const card = document.createElement('div');
-        card.className = `player-card ${isSel ? 'active' : ''}`;
-        card.innerHTML = `<div class="p-pos">${escapeHTML(p.pos)}</div><div class="p-num">#${escapeHTML(p.number)}</div><div class="p-name">${escapeHTML(p.name)}</div>`;
-        card.onclick = () => {
-          selectedDefender = isSel ? null : { ...p, teamKey: 'home' };
-          renderDefenderCards();
-        };
-        grid.appendChild(card);
-      });
+      renderPlayerCardsGrid(teamsData.home, 'home', selectedDefender, 'defenderPlayerGrid', true);
     }
 
     function clearSelectedDefender() {
@@ -1428,22 +1423,40 @@
       benchGrid.innerHTML = '';
 
       const th = teamsData.home;
-      const courtList = [
-        { ...th.gk, pos: 'GK' },
-        ...Object.keys(th.court).map(pos => ({ ...th.court[pos], pos: pos }))
-      ];
+      const gk = { ...th.gk, pos: 'GK' };
+      const lw = { ...th.court.LW, pos: 'LW' };
+      const pv = { ...th.court.PV, pos: 'PV' };
+      const rw = { ...th.court.RW, pos: 'RW' };
+      const lb = { ...th.court.LB, pos: 'LB' };
+      const cb = { ...th.court.CB, pos: 'CB' };
+      const rb = { ...th.court.RB, pos: 'RB' };
 
-      courtList.forEach(p => {
+      const row1 = [gk, lw, pv, rw];
+      const row2 = [lb, cb, rb];
+
+      const createBenchCard = (p) => {
+        const isSel = playerToSubOut && String(playerToSubOut.number) === String(p.number);
         const card = document.createElement('div');
-        card.className = `player-card ${playerToSubOut && playerToSubOut.number === p.number ? 'active' : ''}`;
-        card.innerHTML = `<div class="p-pos">${escapeHTML(p.pos)}</div><div class="p-num">#${escapeHTML(p.number)}</div><div class="p-name">${escapeHTML(p.name)}</div>`;
+        card.className = `player-card ${isSel ? 'active' : ''}`;
+        card.innerHTML = `<div class="p-num">#${escapeHTML(p.number)}</div><div class="p-name">${escapeHTML(p.name)}</div>`;
         card.onclick = () => {
           playerToSubOut = p;
           renderBenchManager();
           showToast(`下げる選手: #${p.number}`);
         };
-        courtGrid.appendChild(card);
-      });
+        return card;
+      };
+
+      const div1 = document.createElement('div');
+      div1.className = 'player-row-4';
+      row1.forEach(p => div1.appendChild(createBenchCard(p)));
+
+      const div2 = document.createElement('div');
+      div2.className = 'player-row-3';
+      row2.forEach(p => div2.appendChild(createBenchCard(p)));
+
+      courtGrid.appendChild(div1);
+      courtGrid.appendChild(div2);
 
       th.bench.forEach((b, index) => {
         const card = document.createElement('div');
@@ -1467,15 +1480,18 @@
         th.gk = inPlayer;
         th.bench[benchIndex] = th.homeGkTemp;
       } else {
-        const pos = outPlayer.pos;
-        th.bench[benchIndex] = th.court[pos];
-        th.court[pos] = inPlayer;
+        const posKeyMap = { 'LW': 'LW', 'PV': 'PV', 'RW': 'RW', 'LB': 'LB', 'CB': 'CB', 'RB': 'RB' };
+        const pos = posKeyMap[outPlayer.posKey || outPlayer.pos];
+        if (pos) {
+          th.bench[benchIndex] = th.court[pos];
+          th.court[pos] = inPlayer;
+        }
       }
       playerToSubOut = null;
       saveLocal();
       renderPlayerCards();
       renderDefenderCards();
-      showToast(`交代: #${outPlayer.number} ➔ #${inPlayer.number}`);
+      showToast(`交代完了`);
     }
 
     function switchRightTab(tabKey) {
@@ -1490,7 +1506,7 @@
     }
 
     function exportCSV() {
-      if (logs.length === 0) { showToast("出力データなし"); return; }
+      if (logs.length === 0) { showToast("データなし"); return; }
       const headers = ["ID", "経過秒", "試合時間", "チームID", "チーム名", "背番号", "選手名", "区分", "結果", "エリア"];
       const csvEscape = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
       const rows = logs.map(l => [l.id, l.sec, l.timeStr, l.team, l.teamName, l.num, l.name, l.category, l.result, l.zone].map(csvEscape));
