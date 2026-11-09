@@ -880,7 +880,7 @@
         btnDF.className = "btn-phase active-df";
         btnOF.className = "btn-phase";
         boxDF.style.display = "flex";
-        boxDF.style.display = "none";
+        boxOF.style.display = "none";
         title.textContent = `② 誰に (${teamsData.guest.name}選手を選択 / 未選択でも可)`;
       }
       renderPlayerCards();
@@ -905,9 +905,9 @@
         const card = document.createElement('div');
         card.className = `player-card ${activeClass}`;
         card.innerHTML = `
-          <div class="p-pos">${p.pos}</div>
-          <div class="p-num">#${p.number}</div>
-          <div class="p-name">${p.name}</div>
+          <div class="p-pos">${escapeHTML(p.pos)}</div>
+          <div class="p-num">#${escapeHTML(p.number)}</div>
+          <div class="p-name">${escapeHTML(p.name)}</div>
         `;
         card.onclick = () => {
           if (selectedPlayer && selectedPlayer.number === p.number && selectedPlayer.teamKey === targetTeamKey) {
@@ -958,7 +958,7 @@
         teamName: team.name,
         num: pNum,
         name: pName,
-        category: 'シュート',
+        category: result === '7mスロー獲得' ? '7m獲得' : (result === '7mスロー献上' ? '7m献上' : 'シュート'),
         result: result,
         zone: selectedZone,
         oppGkNum: oppGk.number,
@@ -1075,23 +1075,29 @@
       showToast("ログを削除しました");
     }
 
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '\'': '&#39;', '"': '&quot;'
+      }[ch]));
+    }
+
     function renderLogs() {
       const tbody = document.getElementById('logTableBody');
       const q = (document.getElementById('logSearchInput')?.value || '').toLowerCase().trim();
       tbody.innerHTML = '';
 
-      const filtered = logs.filter(l => l.name.toLowerCase().includes(q) || l.result.toLowerCase().includes(q) || l.teamName.toLowerCase().includes(q) || l.zone.toLowerCase().includes(q));
+      const filtered = logs.filter(l => String(l.name ?? '').toLowerCase().includes(q) || String(l.result ?? '').toLowerCase().includes(q) || String(l.teamName ?? '').toLowerCase().includes(q) || String(l.zone ?? '').toLowerCase().includes(q));
 
       filtered.forEach(l => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${l.timeStr}</td>
-          <td style="color:${l.team === 'home' ? '#818cf8' : '#fb7185'}; font-weight:700;">${l.teamName}</td>
-          <td>#${l.num} ${l.name}</td>
-          <td>${l.category}</td>
-          <td style="font-weight:700;">${l.result}</td>
-          <td>${l.zone}</td>
-          <td>${l.oppGkNum !== '-' ? `#${l.oppGkNum}` : '-'}</td>
+          <td>${escapeHTML(l.timeStr)}</td>
+          <td style="color:${l.team === 'home' ? '#818cf8' : '#fb7185'}; font-weight:700;">${escapeHTML(l.teamName)}</td>
+          <td>#${escapeHTML(l.num)} ${escapeHTML(l.name)}</td>
+          <td>${escapeHTML(l.category)}</td>
+          <td style="font-weight:700;">${escapeHTML(l.result)}</td>
+          <td>${escapeHTML(l.zone)}</td>
+          <td>${l.oppGkNum !== '-' ? `#${escapeHTML(l.oppGkNum)}` : '-'}</td>
           <td><button onclick="deleteLogById('${l.id}')" style="background:#450a0a; color:#fca5a5; font-size:9px; padding:1px 4px;">削</button></td>
         `;
         tbody.appendChild(tr);
@@ -1161,6 +1167,22 @@
       renderZoneStats(hShots, gShots);
     }
 
+    function getAllRosterPlayers(teamKey) {
+      const team = teamsData[teamKey];
+      const players = [
+        { ...team.gk, pos: 'GK' },
+        ...Object.keys(team.court).map(pos => ({ ...team.court[pos], pos })),
+        ...team.bench.map((p, index) => ({ ...p, pos: `BENCH${index + 1}` }))
+      ];
+      const seen = new Set();
+      return players.filter(p => {
+        const key = String(p.number);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
     function renderPlayerStats(teamLogs, containerId, oppShots, teamKey) {
       const tbody = document.getElementById(containerId);
       tbody.innerHTML = '';
@@ -1169,12 +1191,13 @@
 
       nums.forEach(n => {
         const pLogs = teamLogs.filter(l => l.num === n);
-        const name = pLogs ? pLogs.name : (teamsData[teamKey].gk.number === n ? teamsData[teamKey].gk.name : `選手 (#${n})`);
+        const rosterPlayer = roster.find(p => String(p.number) === String(n));
+        const name = pLogs.length > 0 ? pLogs[0].name : (rosterPlayer ? rosterPlayer.name : `選手 (#${n})`);
         const shots = pLogs.filter(l => l.category === 'シュート');
         const goals = shots.filter(l => l.result === 'ゴール').length;
         const att = shots.length;
         const rate = att > 0 ? Math.round((goals / att) * 100) : 0;
-        const gained7m = shots.filter(l => l.result === '7mスロー獲得').length;
+        const gained7m = pLogs.filter(l => l.category === '7m獲得').length;
         const to = pLogs.filter(l => l.category === 'ターンオーバー').length;
         const foul2m = pLogs.filter(l => l.result === '2分退場').length;
         const faced = oppShots.filter(l => l.oppGkNum === n);
@@ -1187,7 +1210,7 @@
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><strong>#${n}</strong></td><td>${name}</td><td>${goals}/${att}</td>
+          <td><strong>#${escapeHTML(n)}</strong></td><td>${escapeHTML(name)}</td><td>${goals}/${att}</td>
           <td style="color:${rate >= 60 ? '#34d399' : '#fff'};">${rate}%</td>
           <td style="color:#38bdf8;">${gained7m}</td>
           <td style="color:#f87171;">${to}</td><td style="color:#fbbf24;">${foul2m}</td>
@@ -1219,7 +1242,7 @@
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><strong>${z}</strong></td>
+          <td><strong>${escapeHTML(z)}</strong></td>
           <td>${hG} / ${hZ.length}</td>
           <td style="color:${hRate >= 60 ? '#34d399' : '#fff'}; font-weight:700;">${hRate}%</td>
           <td>${gG} / ${gZ.length}</td>
@@ -1246,7 +1269,7 @@
       courtList.forEach(p => {
         const card = document.createElement('div');
         card.className = `player-card ${playerToSubOut && playerToSubOut.number === p.number ? 'active' : ''}`;
-        card.innerHTML = `<div class="p-pos">${p.pos}</div><div class="p-num">#${p.number}</div><div class="p-name">${p.name}</div>`;
+        card.innerHTML = `<div class="p-pos">${escapeHTML(p.pos)}</div><div class="p-num">#${escapeHTML(p.number)}</div><div class="p-name">${escapeHTML(p.name)}</div>`;
         card.onclick = () => {
           playerToSubOut = p;
           renderBenchManager();
@@ -1258,7 +1281,7 @@
       th.bench.forEach((b, index) => {
         const card = document.createElement('div');
         card.className = 'bench-card';
-        card.innerHTML = `<div class="p-num" style="color:#38bdf8;">#${b.number}</div><div class="p-name">${b.name}</div>`;
+        card.innerHTML = `<div class="p-num" style="color:#38bdf8;">#${escapeHTML(b.number)}</div><div class="p-name">${escapeHTML(b.name)}</div>`;
         card.onclick = () => {
           if (!playerToSubOut) {
             alert("先に上のコート上の選手をタップして選んでください。");
@@ -1284,7 +1307,6 @@
       playerToSubOut = null;
       saveLocal();
       renderPlayerCards();
-      renderBenchManager();
       showToast(`交代: #${outPlayer.number} ➔ #${inPlayer.number}`);
     }
 
@@ -1302,8 +1324,15 @@
     function exportCSV() {
       if (logs.length === 0) { showToast("出力するログがありません"); return; }
       const headers = ["ID", "経過秒", "試合時間", "チームID", "チーム名", "背番号", "選手名", "区分", "結果", "エリア", "相手GK番号", "相手GK名"];
-      const rows = logs.map(l => [l.id, l.sec, `"${l.timeStr}"`, `"${l.team}"`, `"${l.teamName}"`, `"${l.num}"`, `"${l.name}"`, `"${l.category}"`, `"${l.result}"`, `"${l.zone}"`, `"${l.oppGkNum}"`, `"${l.oppGkName}"`]);
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const csvEscape = value => {
+        const s = String(value ?? '');
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const rows = logs.map(l => [
+        l.id, l.sec, l.timeStr, l.team, l.teamName, l.num, l.name,
+        l.category, l.result, l.zone, l.oppGkNum, l.oppGkName
+      ].map(csvEscape));
+      const csv = [headers.map(csvEscape).join(','), ...rows.map(r => r.join(','))].join('\r\n');
       const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
       const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -1339,7 +1368,7 @@
 
     function resetRosterToDefault() {
       if (confirm("チーム名および選手設定を初期値に戻しますか？")) {
-        teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+        teamsData = normalizeTeamsData(JSON.parse(JSON.stringify(DEFAULT_TEAMS)));
         saveLocal();
         updateDashboard();
         renderPlayerCards();
@@ -1358,11 +1387,11 @@
       if (linesHome.length >= 7) {
         const parsedH = linesHome.map(line => {
           const parts = line.split(/[\s,]+/);
-          const num = parts || '?';
+          const num = parts[0] || '?';
           const name = parts.slice(1).join(' ') || `選手${num}`;
           return { number: num, name: name };
         });
-        teamsData.home.gk = parsedH;
+        teamsData.home.gk = parsedH[0];
         const positions = ['LW', 'PV', 'RW', 'LB', 'CB', 'RB'];
         positions.forEach((pos, i) => { teamsData.home.court[pos] = parsedH[i + 1]; });
         teamsData.home.bench = parsedH.slice(7);
@@ -1372,11 +1401,11 @@
       if (linesGuest.length >= 7) {
         const parsedG = linesGuest.map(line => {
           const parts = line.split(/[\s,]+/);
-          const num = parts || '?';
+          const num = parts[0] || '?';
           const name = parts.slice(1).join(' ') || `相手${num}`;
           return { number: num, name: name };
         });
-        teamsData.guest.gk = parsedG;
+        teamsData.guest.gk = parsedG[0];
         const positions = ['LW', 'PV', 'RW', 'LB', 'CB', 'RB'];
         positions.forEach((pos, i) => { teamsData.guest.court[pos] = parsedG[i + 1]; });
         teamsData.guest.bench = parsedG.slice(7);
@@ -1387,6 +1416,42 @@
       updateDashboard();
       closeRosterModal();
       showToast("選手設定を反映しました");
+    }
+
+    function normalizeTeamData(team) {
+      if (!team || typeof team !== 'object') return null;
+
+      const normalizePlayer = (p, fallbackNumber = '?', fallbackName = '選手') => {
+        if (Array.isArray(p)) {
+          return { number: String(p[0] ?? fallbackNumber), name: String(p[1] ?? fallbackName) };
+        }
+        if (p && typeof p === 'object') {
+          return {
+            number: String(p.number ?? fallbackNumber),
+            name: String(p.name ?? fallbackName)
+          };
+        }
+        return { number: String(fallbackNumber), name: fallbackName };
+      };
+
+      team.gk = normalizePlayer(team.gk, '1', 'GK');
+      const positions = ['LW', 'PV', 'RW', 'LB', 'CB', 'RB'];
+      team.court = team.court && typeof team.court === 'object' ? team.court : {};
+      positions.forEach((pos, i) => {
+        team.court[pos] = normalizePlayer(team.court[pos], String(i + 2), pos);
+      });
+      team.bench = Array.isArray(team.bench)
+        ? team.bench.map((p, i) => normalizePlayer(p, String(i + 8), `控え${i + 8}`))
+        : [];
+      team.name = String(team.name ?? 'チーム');
+      return team;
+    }
+
+    function normalizeTeamsData(data) {
+      if (!data || typeof data !== 'object') return JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+      data.home = normalizeTeamData(data.home) || JSON.parse(JSON.stringify(DEFAULT_TEAMS.home));
+      data.guest = normalizeTeamData(data.guest) || JSON.parse(JSON.stringify(DEFAULT_TEAMS.guest));
+      return data;
     }
 
     function saveLocal() {
@@ -1400,8 +1465,11 @@
       try {
         const t = localStorage.getItem('itsu15g_v3_teams');
         const l = localStorage.getItem('itsu15g_v3_logs');
-        if (t) teamsData = JSON.parse(t);
-        if (l) logs = JSON.parse(l);
+        if (t) teamsData = normalizeTeamsData(JSON.parse(t));
+        if (l) {
+          const parsedLogs = JSON.parse(l);
+          logs = Array.isArray(parsedLogs) ? parsedLogs : [];
+        }
       } catch(e) {}
     }
 
