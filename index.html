@@ -446,7 +446,7 @@
     .btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; font-size: 10px; font-weight: 700; }
     .btn-indigo { background: #4f46e5; color: #fff; padding: 5px 10px; font-weight: 700; font-size: 11px; }
     .btn-success { background: #059669; color: #fff; padding: 4px 10px; font-weight: 700; font-size: 10px; }
-    .btn-danger { background: #b91c1c; color: #fff; padding: 4px 10px; font-size: 10px; font-weight: 700; }
+    .btn-danger { background: #b91c1c; color: #fff; padding: 4px 10px; font-weight: 700; font-size: 10px; }
 
     /* スマホ用レスポンシブ（700px以下） */
     @media (max-width: 700px) {
@@ -748,7 +748,7 @@
   <div id="toast">通知</div>
 
   <script>
-    // 基本人数を各14名に設定（GK, LW, PV, RW, LB, CB, RB + 控え7名）
+    // 自チーム・相手チームともにNo.1〜No.14（コート上7名＋控え7名）の初期設定に統一
     const DEFAULT_TEAMS = {
       home: {
         name: 'ITS U-15G',
@@ -764,14 +764,14 @@
       },
       guest: {
         name: '相手チーム',
-        gk: { number: '16', name: '相手GK' },
+        gk: { number: '1', name: '相手GK1' },
         court: {
-          LW: { number: '13', name: '相手LW' }, PV: { number: '14', name: '相手PV' }, RW: { number: '15', name: '相手RW' },
-          LB: { number: '17', name: '相手LB' }, CB: { number: '18', name: '相手CB' }, RB: { number: '19', name: '相手RB' }
+          LW: { number: '2', name: '相手2' }, PV: { number: '3', name: '相手3' }, RW: { number: '4', name: '相手4' },
+          LB: { number: '5', name: '相手5' }, CB: { number: '6', name: '相手6' }, RB: { number: '7', name: '相手7' }
         },
         bench: [
-          { number: '20', name: '相手控え20' }, { number: '21', name: '相手控え21' }, { number: '22', name: '相手控え22' },
-          { number: '23', name: '相手控え23' }, { number: '24', name: '相手控え24' }, { number: '25', name: '相手控え25' }, { number: '26', name: '相手控え26' }
+          { number: '8', name: '相手8' }, { number: '9', name: '相手9' }, { number: '10', name: '相手10' },
+          { number: '11', name: '相手11' }, { number: '12', name: '相手12' }, { number: '13', name: '相手13' }, { number: '14', name: '相手14' }
         ]
       }
     };
@@ -891,7 +891,6 @@
       renderDefenderCards();
     }
 
-    // 「#」から「No.」へ変更
     function renderPlayerCardsGrid(team, targetTeamKey, selectedObj, containerId, isDefender = false) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -1222,7 +1221,6 @@
       }[ch]));
     }
 
-    // 「No.」表記
     function renderLogs() {
       const tbody = document.getElementById('logTableBody');
       const q = (document.getElementById('logSearchInput')?.value || '').toLowerCase().trim();
@@ -1326,7 +1324,6 @@
       });
     }
 
-    // 「No.」表記
     function renderPlayerStats(teamLogs, containerId, oppShots, teamKey) {
       const tbody = document.getElementById(containerId);
       tbody.innerHTML = '';
@@ -1426,7 +1423,6 @@
       });
     }
 
-    // 交代画面のチーム切り替え関数
     function switchBenchTeam(teamKey) {
       currentBenchTeam = teamKey;
       playerToSubOut = null;
@@ -1443,7 +1439,6 @@
     }
 
     let playerToSubOut = null;
-    // 自チーム・相手チーム両対応の交代マネージャー
     function renderBenchManager() {
       const courtGrid = document.getElementById('benchCourtGrid');
       const benchGrid = document.getElementById('benchReserveGrid');
