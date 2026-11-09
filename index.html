@@ -99,7 +99,7 @@
     }
     .btn-m-view.active { background: #0284c7; color: #fff; }
 
-    /* ================= メイン画面（デフォルト: 2カラム） ================= *
+    /* ================= メイン画面（デフォルト: 左右2カラム） ================= */
     main {
       flex: 1;
       display: grid;
@@ -441,8 +441,8 @@
     .btn-success { background: #059669; color: #fff; padding: 4px 10px; font-weight: 700; font-size: 10px; }
     .btn-danger { background: #b91c1c; color: #fff; padding: 4px 10px; font-size: 10px; font-weight: 700; }
 
-    /* ================= スマホ用レスポンシブメディアクエリ ================= */
-    @media (max-width: 900px) {
+    /* ================= スマホ用レスポンシブ（700px以下に修正） ================= */
+    @media (max-width: 700px) {
       .mobile-view-bar {
         display: grid;
       }
@@ -450,7 +450,6 @@
         display: block;
         height: calc(100vh - 48px - 40px);
       }
-      /* スマホ表示ではタブ切替に応じて片方ずつ表示 */
       .left-panel {
         height: 100%;
         display: flex !important;
@@ -494,7 +493,7 @@
     </div>
   </header>
 
-  <!-- スマホ専用：画面切替バー（スマホサイズでのみ表示） -->
+  <!-- スマホ専用：画面切替バー（700px以下でのみ表示） -->
   <div class="mobile-view-bar">
     <button id="mTabInput" onclick="switchMobileView('input')" class="btn-m-view active">⚡ 入力操作画面</button>
     <button id="mTabAnalysis" onclick="switchMobileView('analysis')" class="btn-m-view">📊 分析・ログ確認</button>
@@ -545,7 +544,7 @@
         <div class="panel-header">
           <span id="playerSelectTitle">② 誰が (自チーム選手を選択)</span>
           <div style="display: flex; gap: 4px;">
-            <button onclick="switchRightTab('bench'); if(window.innerWidth<=900) switchMobileView('analysis');" class="btn-secondary" style="font-size: 9px; padding: 1px 5px;">交代</button>
+            <button onclick="switchRightTab('bench'); if(window.innerWidth<=700) switchMobileView('analysis');" class="btn-secondary" style="font-size: 9px; padding: 1px 5px;">交代</button>
             <button onclick="clearSelectedPlayer()" class="btn-secondary" style="font-size: 9px; padding: 1px 5px;">解除</button>
           </div>
         </div>
