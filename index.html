@@ -5,10 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ITS U-15 | ハンドボールリアルタイム分析PRO</title>
   <style>
+    /* ================= リッチブラック＆ゴールド Theme ================= */
+    :root {
+      --bg-dark: #0a0a0a;          /* ディープブラック */
+      --card-bg: #141414;          /* マットブラック */
+      --card-border: #2a2a2a;      /* シックグレー border */
+      --gold-primary: #eab308;     /* シャンパンゴールド */
+      --gold-dark: #ca8a04;        /* ディープゴールド */
+      --gold-light: #fef08a;       /* ブライトゴールド */
+      --text-main: #fef08a;        /* ゴールドがかったテキスト */
+      --text-sub: #a1a1aa;         /* ニュートラルグレー */
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
-      background-color: #080c14;
-      color: #f1f5f9;
+      background-color: var(--bg-dark);
+      color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       height: 100vh;
       width: 100vw;
@@ -32,8 +44,8 @@
     /* ================= ヘッダー ================= */
     header {
       height: 48px;
-      background-color: #0f172a;
-      border-bottom: 1px solid #1e293b;
+      background-color: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -41,14 +53,14 @@
       flex-shrink: 0;
     }
     .header-left { display: flex; align-items: center; gap: 8px; }
-    .brand-title { font-weight: 800; font-size: 13px; color: #38bdf8; letter-spacing: 0.04em; }
+    .brand-title { font-weight: 800; font-size: 13px; color: var(--gold-primary); letter-spacing: 0.05em; }
     .score-board {
       font-family: monospace;
       font-size: 13px;
       font-weight: 800;
-      background: #020617;
-      border: 1px solid #334155;
-      padding: 2px 6px;
+      background: #000;
+      border: 1px solid var(--card-border);
+      padding: 2px 8px;
       border-radius: 4px;
       display: flex;
       align-items: center;
@@ -58,8 +70,8 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      background: #020617;
-      border: 1px solid #1e293b;
+      background: #000;
+      border: 1px solid var(--card-border);
       padding: 2px 6px;
       border-radius: 4px;
     }
@@ -67,19 +79,19 @@
       font-family: monospace;
       font-size: 13px;
       font-weight: 700;
-      color: #facc15;
+      color: var(--gold-light);
       min-width: 44px;
       text-align: center;
     }
-    .btn-half { background: #334155; color: #fff; font-size: 9px; padding: 3px 5px; font-weight: 700; }
-    .btn-timer-ctrl { background: #059669; color: #fff; font-size: 9px; padding: 3px 6px; font-weight: 700; }
-    .btn-timer-ctrl.running { background: #dc2626; }
+    .btn-half { background: #262626; color: #fff; font-size: 9px; padding: 3px 5px; font-weight: 700; border: 1px solid #404040; }
+    .btn-timer-ctrl { background: var(--gold-dark); color: #000; font-size: 9px; padding: 3px 6px; font-weight: 800; }
+    .btn-timer-ctrl.running { background: #dc2626; color: #fff; }
 
     /* スマホ用ビュー切り替えバー（700px以下のみ表示） */
     .mobile-view-bar {
       display: none;
-      background: #020617;
-      border-bottom: 1px solid #1e293b;
+      background: #000;
+      border-bottom: 1px solid var(--card-border);
       height: 40px;
       flex-shrink: 0;
       grid-template-columns: 1fr 1fr;
@@ -87,8 +99,8 @@
       gap: 4px;
     }
     .btn-m-view {
-      background: #1e293b;
-      color: #94a3b8;
+      background: #171717;
+      color: var(--text-sub);
       font-weight: 800;
       font-size: 11px;
       border-radius: 4px;
@@ -96,8 +108,9 @@
       align-items: center;
       justify-content: center;
       gap: 4px;
+      border: 1px solid var(--card-border);
     }
-    .btn-m-view.active { background: #0284c7; color: #fff; }
+    .btn-m-view.active { background: var(--gold-primary); color: #000; border-color: var(--gold-light); }
 
     /* ================= メイン画面（左右2カラム） ================= */
     main {
@@ -109,8 +122,8 @@
     }
 
     .left-panel {
-      background: #0b1120;
-      border-right: 1px solid #1e293b;
+      background: var(--bg-dark);
+      border-right: 1px solid var(--card-border);
       display: flex;
       flex-direction: column;
       height: 100%;
@@ -129,27 +142,27 @@
     .btn-phase {
       font-size: 11px;
       font-weight: 800;
-      color: #94a3b8;
-      background: #1e293b;
-      border: 2px solid #334155;
+      color: var(--text-sub);
+      background: #171717;
+      border: 1px solid var(--card-border);
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 5px;
     }
-    .btn-phase.active-of { background: #312e81; border-color: #6366f1; color: #ffffff; }
+    .btn-phase.active-of { background: var(--gold-dark); border-color: var(--gold-primary); color: #000; }
     .btn-phase.active-df { background: #881337; border-color: #f43f5e; color: #ffffff; }
 
     .card-panel {
-      background: #0f172a;
-      border: 1px solid #1e293b;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
       border-radius: 5px;
       padding: 5px 7px;
     }
     .panel-header {
       font-size: 10px;
       font-weight: 700;
-      color: #94a3b8;
+      color: var(--gold-primary);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -161,8 +174,8 @@
       position: relative;
       width: 100%;
       height: 130px;
-      background: #0f1e36;
-      border: 2px solid #334155;
+      background: #000;
+      border: 1.5px dashed var(--gold-primary);
       border-radius: 5px;
       overflow: hidden;
       display: flex;
@@ -175,14 +188,14 @@
       transform: translateX(-50%);
       width: 80px;
       height: 9px;
-      background: #475569;
-      border-bottom: 2px solid #f8fafc;
+      background: var(--gold-primary);
+      border-bottom: 2px solid #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 7px;
-      font-weight: 800;
-      color: #f8fafc;
+      font-weight: 900;
+      color: #000;
       letter-spacing: 0.1em;
       z-index: 1;
     }
@@ -192,9 +205,9 @@
       transform: translateX(-50%);
       width: 200px;
       height: 50px;
-      border-bottom: 2px solid #38bdf8;
-      border-left: 2px solid #38bdf8;
-      border-right: 2px solid #38bdf8;
+      border-bottom: 2px solid var(--gold-primary);
+      border-left: 2px solid var(--gold-primary);
+      border-right: 2px solid var(--gold-primary);
       border-bottom-left-radius: 100px 50px;
       border-bottom-right-radius: 100px 50px;
       pointer-events: none;
@@ -205,9 +218,9 @@
       transform: translateX(-50%);
       width: 280px;
       height: 80px;
-      border-bottom: 2px dashed rgba(56, 189, 248, 0.4);
-      border-left: 2px dashed rgba(56, 189, 248, 0.4);
-      border-right: 2px dashed rgba(56, 189, 248, 0.4);
+      border-bottom: 2px dashed rgba(234, 179, 8, 0.4);
+      border-left: 2px dashed rgba(234, 179, 8, 0.4);
+      border-right: 2px dashed rgba(234, 179, 8, 0.4);
       border-bottom-left-radius: 140px 80px;
       border-bottom-right-radius: 140px 80px;
       pointer-events: none;
@@ -223,9 +236,9 @@
     }
     .court-row-3 { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 2px; flex: 1; }
     .btn-court-zone {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(51, 65, 85, 0.85);
-      color: #e2e8f0;
+      background: rgba(20, 20, 20, 0.9);
+      border: 1px solid var(--card-border);
+      color: #f8fafc;
       font-size: 9px;
       font-weight: 700;
       display: flex;
@@ -234,22 +247,23 @@
       border-radius: 3px;
     }
     .btn-court-zone.active {
-      background: rgba(99, 102, 241, 0.9);
-      border-color: #818cf8;
-      color: #fff;
-      box-shadow: 0 0 6px rgba(99, 102, 241, 0.6);
+      background: var(--gold-primary);
+      border-color: var(--gold-light);
+      color: #000;
+      font-weight: 800;
+      box-shadow: 0 0 8px rgba(234, 179, 8, 0.5);
     }
     .btn-7m-slot {
       height: 15px;
-      background: rgba(2, 132, 199, 0.5);
-      border: 1px solid #0284c7;
-      color: #bae6fd;
+      background: rgba(202, 138, 4, 0.4);
+      border: 1px solid var(--gold-dark);
+      color: var(--gold-light);
       font-size: 8px;
       font-weight: 800;
       margin: 0 auto;
       width: 100px;
     }
-    .btn-7m-slot.active { background: #0284c7; color: #fff; border-color: #38bdf8; }
+    .btn-7m-slot.active { background: var(--gold-primary); color: #000; border-color: #fff; }
 
     /* ② 選手選択（2段コート配置） */
     .player-select-wrap { flex-shrink: 0; }
@@ -269,17 +283,18 @@
       gap: 3px;
     }
     .player-card {
-      background: #1e293b;
-      border: 1px solid #334155;
+      background: #171717;
+      border: 1px solid var(--card-border);
       padding: 5px 2px;
       text-align: center;
       border-radius: 4px;
       cursor: pointer;
     }
-    .player-card.active { background: #312e81; border-color: #6366f1; }
-    .player-card.active-opp { background: #881337; border-color: #f43f5e; }
+    .player-card.active { background: var(--gold-dark); border-color: var(--gold-primary); color: #000; }
+    .player-card.active .p-num, .player-card.active .p-name { color: #000 !important; }
+    .player-card.active-opp { background: #881337; border-color: #f43f5e; color: #fff; }
     .p-num { font-size: 13px; font-weight: 800; color: #fff; font-family: monospace; }
-    .p-name { font-size: 9px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .p-name { font-size: 9px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
     /* ③ 結果ボタンエリア */
     .action-container {
@@ -305,12 +320,12 @@
       justify-content: center;
       border-radius: 4px;
     }
-    .btn-goal { background: #059669; }
+    .btn-goal { background: #16a34a; }
     .btn-save { background: #d97706; }
     .btn-miss { background: #dc2626; }
     .btn-post { background: #7c3aed; }
     .btn-conceded { background: #b91c1c; }
-    .btn-7m { background: #0284c7; border: 1px solid #38bdf8; }
+    .btn-7m { background: var(--gold-dark); color: #000; border: 1px solid var(--gold-primary); }
 
     .sub-grid-4 {
       display: grid;
@@ -320,9 +335,9 @@
       min-height: 50px;
     }
     .btn-sub {
-      background: #1e293b;
-      color: #cbd5e1;
-      border: 1px solid #334155;
+      background: #171717;
+      color: #e5e5e5;
+      border: 1px solid var(--card-border);
       font-size: 10px;
       font-weight: 700;
       display: flex;
@@ -343,8 +358,8 @@
       flex-shrink: 0;
     }
     .btn-pen {
-      background: #18181b;
-      border: 1px solid #3f3f46;
+      background: #000;
+      border: 1px solid var(--card-border);
       color: #cbd5e1;
       font-size: 9px;
       font-weight: 700;
@@ -356,15 +371,15 @@
 
     /* ================= 右ペイン: 分析・確認エリア ================= */
     .right-panel {
-      background: #090d16;
+      background: var(--bg-dark);
       display: flex;
       flex-direction: column;
       height: 100%;
       overflow: hidden;
     }
     .right-tabs {
-      background: #0f172a;
-      border-bottom: 1px solid #1e293b;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
       height: 38px;
       display: flex;
       padding: 0 6px;
@@ -373,7 +388,7 @@
     }
     .tab-btn {
       background: transparent;
-      color: #94a3b8;
+      color: var(--text-sub);
       border-bottom: 2px solid transparent;
       padding: 0 10px;
       font-size: 10px;
@@ -382,7 +397,7 @@
       align-items: center;
       border-radius: 0;
     }
-    .tab-btn.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+    .tab-btn.active { color: var(--gold-primary); border-bottom-color: var(--gold-primary); }
 
     .right-content {
       flex: 1;
@@ -394,42 +409,42 @@
     }
 
     .momentum-bar-box {
-      background: #0f172a;
-      border: 1px solid #1e293b;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
       border-radius: 5px;
       padding: 6px 10px;
     }
     .bar-label { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; margin-bottom: 3px; }
-    .bar-track { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; display: flex; }
-    .bar-home { background: #6366f1; height: 100%; transition: width 0.3s; }
+    .bar-track { height: 8px; background: #262626; border-radius: 4px; overflow: hidden; display: flex; }
+    .bar-home { background: var(--gold-primary); height: 100%; transition: width 0.3s; }
     .bar-guest { background: #f43f5e; height: 100%; transition: width 0.3s; }
 
     .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .kpi-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 5px; padding: 6px; }
+    .kpi-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 5px; padding: 6px; }
     .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
-    .kpi-cell { background: #020617; border: 1px solid #1e293b; padding: 4px; border-radius: 4px; text-align: center; }
-    .kpi-title { font-size: 8px; color: #64748b; font-weight: 700; }
-    .kpi-val { font-size: 11px; font-weight: 800; }
+    .kpi-cell { background: #000; border: 1px solid var(--card-border); padding: 4px; border-radius: 4px; text-align: center; }
+    .kpi-title { font-size: 8px; color: var(--text-sub); font-weight: 700; }
+    .kpi-val { font-size: 11px; font-weight: 800; color: var(--gold-light); }
 
     .table-box {
-      background: #0f172a;
-      border: 1px solid #1e293b;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
       border-radius: 5px;
       overflow-x: auto;
     }
     .stats-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: monospace; }
-    .stats-table th, .stats-table td { padding: 5px 6px; border-bottom: 1px solid #1e293b; text-align: left; }
-    .stats-table th { background: #0b1329; color: #94a3b8; font-weight: 700; }
-    .stats-table tr:hover { background: #1e293b; }
+    .stats-table th, .stats-table td { padding: 5px 6px; border-bottom: 1px solid var(--card-border); text-align: left; }
+    .stats-table th { background: #000; color: var(--gold-primary); font-weight: 700; }
+    .stats-table tr:hover { background: #1f1f1f; }
 
     .bench-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
     .bench-card {
-      background: #1e293b; border: 1px dashed #475569; padding: 5px; border-radius: 4px; text-align: center; cursor: pointer;
+      background: #171717; border: 1px dashed var(--card-border); padding: 5px; border-radius: 4px; text-align: center; cursor: pointer;
     }
 
     #toast {
       position: fixed; bottom: 12px; right: 12px;
-      background: #0f172a; border: 1px solid #38bdf8; color: #fff;
+      background: var(--card-bg); border: 1px solid var(--gold-primary); color: var(--gold-light);
       padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 700;
       opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 1000;
     }
@@ -440,12 +455,12 @@
       background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 999;
     }
     .modal-box {
-      background: #0f172a; border: 1px solid #334155; padding: 14px; border-radius: 6px;
+      background: var(--card-bg); border: 1px solid var(--card-border); padding: 14px; border-radius: 6px;
       width: 500px; max-width: 95%; max-height: 90vh; overflow-y: auto;
     }
-    .btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 4px 8px; font-size: 10px; font-weight: 700; }
-    .btn-indigo { background: #4f46e5; color: #fff; padding: 5px 10px; font-weight: 700; font-size: 11px; }
-    .btn-success { background: #059669; color: #fff; padding: 4px 10px; font-weight: 700; font-size: 10px; }
+    .btn-secondary { background: #262626; color: #e5e5e5; border: 1px solid var(--card-border); padding: 4px 8px; font-size: 10px; font-weight: 700; }
+    .btn-indigo { background: var(--gold-dark); color: #000; padding: 5px 10px; font-weight: 800; font-size: 11px; }
+    .btn-success { background: #16a34a; color: #fff; padding: 4px 10px; font-weight: 700; font-size: 10px; }
     .btn-danger { background: #b91c1c; color: #fff; padding: 4px 10px; font-size: 10px; font-weight: 700; }
 
     /* スマホ用レスポンシブ（700px以下） */
@@ -466,8 +481,8 @@
     <div class="header-left">
       <div class="brand-title">ITS U-15G PRO</div>
       <div class="score-board">
-        <span id="headerHomeScore" style="color: #818cf8;">自 0</span>
-        <span style="color: #64748b;">-</span>
+        <span id="headerHomeScore" style="color: var(--gold-primary);">自 0</span>
+        <span style="color: var(--text-sub);">-</span>
         <span id="headerGuestScore" style="color: #f43f5e;">0 相手</span>
       </div>
       <div class="timer-box">
@@ -523,7 +538,7 @@
             <button onclick="setZone('⑨右側ロング', this)" class="btn-court-zone">⑨ 右側ロング</button>
           </div>
           <div style="display: flex; justify-content: center; width: 100%;">
-            <button onclick="setZone('⚡速攻(FB)', this)" class="btn-court-zone" style="height: 14px; font-size: 8px; width: 100px; background: rgba(30, 41, 59, 0.9);">⚡ 速攻 (FB)</button>
+            <button onclick="setZone('⚡速攻(FB)', this)" class="btn-court-zone" style="height: 14px; font-size: 8px; width: 100px; background: rgba(20, 20, 20, 0.9);">⚡ 速攻 (FB)</button>
           </div>
         </div>
       </div>
@@ -577,9 +592,9 @@
           <div class="action-row-5">
             <button onclick="recordShoot('guest', 'GKセーブ')" class="btn-act btn-save" style="border: 2px solid #fbbf24;">自GKセーブ</button>
             <button onclick="recordShoot('guest', 'ゴール')" class="btn-act btn-conceded">被失点</button>
-            <button onclick="recordShoot('guest', '枠外')" class="btn-act" style="background: #334155;">相手枠外</button>
+            <button onclick="recordShoot('guest', '枠外')" class="btn-act" style="background: #262626;">相手枠外</button>
             <button onclick="recordShoot('guest', 'ポスト直撃')" class="btn-act btn-post">相手ポスト</button>
-            <button onclick="record7mConceded()" class="btn-act btn-7m" style="background: #b45309; border-color: #f59e0b;">7m献上</button>
+            <button onclick="record7mConceded()" class="btn-act btn-7m" style="background: #b45309; border-color: #f59e0b; color:#fff;">7m献上</button>
           </div>
 
           <div class="sub-grid-4">
@@ -611,8 +626,8 @@
       <div id="tabContentDash" class="right-content">
         <div class="momentum-bar-box">
           <div class="bar-label">
-            <span id="barHomeTitle" style="color: #818cf8;">自: 0点</span>
-            <span style="color: #94a3b8;">決定効率バランス</span>
+            <span id="barHomeTitle" style="color: var(--gold-primary);">自: 0点</span>
+            <span style="color: var(--text-sub);">決定効率バランス</span>
             <span id="barGuestTitle" style="color: #fb7185;">相手: 0点</span>
           </div>
           <div class="bar-track">
@@ -622,32 +637,32 @@
         </div>
 
         <div class="kpi-row">
-          <div class="kpi-card" style="border-color: #312e81;">
-            <div style="font-weight: 800; color: #818cf8; font-size: 11px;" id="dashHomeName">自チーム</div>
+          <div class="kpi-card" style="border-color: var(--gold-dark);">
+            <div style="font-weight: 800; color: var(--gold-primary); font-size: 11px;" id="dashHomeName">自チーム</div>
             <div class="kpi-grid">
-              <div class="kpi-cell"><div class="kpi-title">決定率</div><div class="kpi-val" id="dashHomeRate" style="color:#34d399;">0%</div></div>
+              <div class="kpi-cell"><div class="kpi-title">決定率</div><div class="kpi-val" id="dashHomeRate" style="color:#4ade80;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">ミス率</div><div class="kpi-val" id="dashHomeTOPct" style="color:#f87171;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">GK阻止</div><div class="kpi-val" id="dashHomeGK" style="color:#fbbf24;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">得点/試投</div><div class="kpi-val" id="dashHomeShots" style="font-size:9px;">0/0</div></div>
               <div class="kpi-cell"><div class="kpi-title">Poss</div><div class="kpi-val" id="dashHomePoss" style="font-size:9px;">0</div></div>
-              <div class="kpi-cell"><div class="kpi-title">OE</div><div class="kpi-val" id="dashHomeOE" style="color:#38bdf8; font-size:9px;">0.00</div></div>
+              <div class="kpi-cell"><div class="kpi-title">OE</div><div class="kpi-val" id="dashHomeOE" style="color:var(--gold-light); font-size:9px;">0.00</div></div>
             </div>
           </div>
 
           <div class="kpi-card" style="border-color: #881337;">
             <div style="font-weight: 800; color: #fb7185; font-size: 11px;" id="dashGuestName">相手チーム</div>
             <div class="kpi-grid">
-              <div class="kpi-cell"><div class="kpi-title">決定率</div><div class="kpi-val" id="dashGuestRate" style="color:#34d399;">0%</div></div>
+              <div class="kpi-cell"><div class="kpi-title">決定率</div><div class="kpi-val" id="dashGuestRate" style="color:#4ade80;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">ミス率</div><div class="kpi-val" id="dashGuestTOPct" style="color:#f87171;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">GK阻止</div><div class="kpi-val" id="dashGuestGK" style="color:#fbbf24;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">得点/試投</div><div class="kpi-val" id="dashGuestShots" style="font-size:9px;">0/0</div></div>
               <div class="kpi-cell"><div class="kpi-title">Poss</div><div class="kpi-val" id="dashGuestPoss" style="font-size:9px;">0</div></div>
-              <div class="kpi-cell"><div class="kpi-title">OE</div><div class="kpi-val" id="dashGuestOE" style="color:#38bdf8; font-size:9px;">0.00</div></div>
+              <div class="kpi-cell"><div class="kpi-title">OE</div><div class="kpi-val" id="dashGuestOE" style="color:var(--gold-light); font-size:9px;">0.00</div></div>
             </div>
           </div>
         </div>
 
-        <h4 id="dashHomeTableTitle" style="color: #818cf8; font-size: 11px;">自チーム 個人別詳細スタッツ ＆ HPI</h4>
+        <h4 id="dashHomeTableTitle" style="color: var(--gold-primary); font-size: 11px;">自チーム 個人別詳細スタッツ ＆ HPI</h4>
         <div class="table-box">
           <table class="stats-table">
             <thead>
@@ -670,7 +685,7 @@
 
       <div id="tabContentHeat" class="right-content" style="display: none;">
         <div class="card-panel">
-          <div class="panel-header"><span style="color: #38bdf8;">コートエリア別 成功率比較</span></div>
+          <div class="panel-header"><span style="color: var(--gold-primary);">コートエリア別 成功率比較</span></div>
           <div class="table-box">
             <table class="stats-table">
               <thead>
@@ -684,7 +699,7 @@
 
       <div id="tabContentLogs" class="right-content" style="display: none;">
         <div style="display: flex; justify-content: space-between; gap: 6px;">
-          <input type="text" id="logSearchInput" oninput="renderLogs()" placeholder="検索..." style="flex: 1; background: #020617; border: 1px solid #334155; padding: 4px; color: #fff; font-size: 11px;">
+          <input type="text" id="logSearchInput" oninput="renderLogs()" placeholder="検索..." style="flex: 1; background: #000; border: 1px solid var(--card-border); padding: 4px; color: #fff; font-size: 11px;">
           <button onclick="deleteLastLog()" class="btn-danger">直前取消</button>
         </div>
         <div class="table-box">
@@ -700,7 +715,7 @@
       <!-- 交代（ベンチ管理）エリア：チーム切替対応 -->
       <div id="tabContentBench" class="right-content" style="display: none;">
         <div style="display: flex; gap: 6px; margin-bottom: 4px;">
-          <button id="btnBenchTeamHome" onclick="switchBenchTeam('home')" class="btn-secondary" style="flex: 1; background: #312e81; color: #fff; border-color: #6366f1;">自チーム 交代</button>
+          <button id="btnBenchTeamHome" onclick="switchBenchTeam('home')" class="btn-secondary" style="flex: 1; background: var(--gold-dark); color: #000; border-color: var(--gold-primary); font-weight:800;">自チーム 交代</button>
           <button id="btnBenchTeamGuest" onclick="switchBenchTeam('guest')" class="btn-secondary" style="flex: 1;">相手チーム 交代</button>
         </div>
         <div class="card-panel">
@@ -718,22 +733,22 @@
   <!-- ==================== 選手設定モーダル ==================== -->
   <div id="rosterModal" class="modal-overlay" style="display: none;">
     <div class="modal-box">
-      <h3 style="margin-bottom: 10px; color: #fff; font-size: 13px;">チーム名 & 選手設定</h3>
+      <h3 style="margin-bottom: 10px; color: var(--gold-primary); font-size: 13px;">チーム名 & 選手設定</h3>
       <div style="margin-bottom: 8px;">
-        <label style="font-size: 10px; color: #94a3b8;">自チーム名</label>
-        <input type="text" id="inputHomeName" style="width: 100%; background: #020617; border: 1px solid #334155; padding: 5px; color: #fff;">
+        <label style="font-size: 10px; color: var(--text-sub);">自チーム名</label>
+        <input type="text" id="inputHomeName" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff;">
       </div>
       <div style="margin-bottom: 10px;">
         <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">自チーム選手一括登録 (背番号 選手名)</label>
-        <textarea id="bulkRosterHome" rows="8" style="width: 100%; background: #020617; border: 1px solid #334155; padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
+        <textarea id="bulkRosterHome" rows="8" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
       </div>
       <div style="margin-bottom: 8px;">
-        <label style="font-size: 10px; color: #94a3b8;">相手チーム名</label>
-        <input type="text" id="inputGuestName" style="width: 100%; background: #020617; border: 1px solid #334155; padding: 5px; color: #fff;">
+        <label style="font-size: 10px; color: var(--text-sub);">相手チーム名</label>
+        <input type="text" id="inputGuestName" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff;">
       </div>
       <div style="margin-bottom: 10px;">
         <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">相手チーム選手一括登録</label>
-        <textarea id="bulkRosterGuest" rows="8" style="width: 100%; background: #020617; border: 1px solid #334155; padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
+        <textarea id="bulkRosterGuest" rows="8" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
         <button onclick="resetRosterToDefault()" class="btn-danger" style="font-size: 10px;">初期状態</button>
@@ -748,7 +763,7 @@
   <div id="toast">通知</div>
 
   <script>
-    // 自チーム・相手チームともにNo.1〜No.14（コート上7名＋控え7名）の初期設定に完全統一
+    // 自チーム・相手チームともにNo.1〜No.14（コート上7名＋控え7名）の初期設定
     const DEFAULT_TEAMS = {
       home: {
         name: 'ITS U-15G',
@@ -783,7 +798,7 @@
     let selectedZone = '②カットイン・PV';
     let logs = [];
 
-    let currentBenchTeam = 'home'; // 交代対象チーム（home / guest）
+    let currentBenchTeam = 'home';
 
     let timerSeconds = 0;
     let isTimerRunning = false;
@@ -1232,7 +1247,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${escapeHTML(l.timeStr)}</td>
-          <td style="color:${l.team === 'home' ? '#818cf8' : '#fb7185'}; font-weight:700;">${escapeHTML(l.teamName)}</td>
+          <td style="color:${l.team === 'home' ? 'var(--gold-primary)' : '#fb7185'}; font-weight:700;">${escapeHTML(l.teamName)}</td>
           <td>No.${escapeHTML(l.num)} ${escapeHTML(l.name)}</td>
           <td style="font-weight:700;">${escapeHTML(l.result)}</td>
           <td>${escapeHTML(l.zone)}</td>
@@ -1372,18 +1387,18 @@
         if (teamKey === 'home') {
           tr.innerHTML = `
             <td><strong>No.${escapeHTML(n)}</strong></td><td>${escapeHTML(name)}</td><td>${goals}/${att}</td>
-            <td style="color:${rate >= 60 ? '#34d399' : '#fff'};">${rate}%</td>
-            <td style="color:#38bdf8;">${gained7m}</td>
-            <td style="color:#34d399;">${defenseSuccess}</td>
+            <td style="color:${rate >= 60 ? '#4ade80' : '#fff'};">${rate}%</td>
+            <td style="color:var(--gold-primary);">${gained7m}</td>
+            <td style="color:#4ade80;">${defenseSuccess}</td>
             <td style="color:#f87171;">${to}</td><td style="color:#fbbf24;">${foul2m}</td>
             <td>${faced.length > 0 ? `${saves}/${faced.length}` : '-'}</td>
-            <td style="font-weight:800; color:${hpiScore >= 5 ? '#34d399' : (hpiScore < 0 ? '#f87171' : '#cbd5e1')}">${hpiScore}</td>
+            <td style="font-weight:800; color:${hpiScore >= 5 ? 'var(--gold-light)' : (hpiScore < 0 ? '#f87171' : '#a1a1aa')}">${hpiScore}</td>
           `;
         } else {
           tr.innerHTML = `
             <td><strong>No.${escapeHTML(n)}</strong></td><td>${escapeHTML(name)}</td><td>${goals}/${att}</td>
-            <td style="color:${rate >= 60 ? '#34d399' : '#fff'};">${rate}%</td>
-            <td style="color:#38bdf8;">${gained7m}</td>
+            <td style="color:${rate >= 60 ? '#4ade80' : '#fff'};">${rate}%</td>
+            <td style="color:var(--gold-primary);">${gained7m}</td>
             <td style="color:#f87171;">${to}</td><td style="color:#fbbf24;">${foul2m}</td>
             <td>${faced.length > 0 ? `${saves}/${faced.length}` : '-'}</td>
           `;
@@ -1415,7 +1430,7 @@
         tr.innerHTML = `
           <td><strong>${escapeHTML(z)}</strong></td>
           <td>${hG}/${hZ.length}</td>
-          <td style="color:${hRate >= 60 ? '#34d399' : '#fff'}; font-weight:700;">${hRate}%</td>
+          <td style="color:${hRate >= 60 ? 'var(--gold-light)' : '#fff'}; font-weight:700;">${hRate}%</td>
           <td>${gG}/${gZ.length}</td>
           <td style="color:${gRate >= 60 ? '#fb7185' : '#fff'}; font-weight:700;">${gRate}%</td>
         `;
@@ -1429,11 +1444,11 @@
       const btnHome = document.getElementById('btnBenchTeamHome');
       const btnGuest = document.getElementById('btnBenchTeamGuest');
       if (teamKey === 'home') {
-        btnHome.style.background = '#312e81'; btnHome.style.color = '#fff'; btnHome.style.borderColor = '#6366f1';
-        btnGuest.style.background = '#1e293b'; btnGuest.style.color = '#cbd5e1'; btnGuest.style.borderColor = '#334155';
+        btnHome.style.background = 'var(--gold-dark)'; btnHome.style.color = '#000'; btnHome.style.borderColor = 'var(--gold-primary)';
+        btnGuest.style.background = '#262626'; btnGuest.style.color = '#e5e5e5'; btnGuest.style.borderColor = 'var(--card-border)';
       } else {
         btnGuest.style.background = '#881337'; btnGuest.style.color = '#fff'; btnGuest.style.borderColor = '#f43f5e';
-        btnHome.style.background = '#1e293b'; btnHome.style.color = '#cbd5e1'; btnHome.style.borderColor = '#334155';
+        btnHome.style.background = '#262626'; btnHome.style.color = '#e5e5e5'; btnHome.style.borderColor = 'var(--card-border)';
       }
       renderBenchManager();
     }
@@ -1487,7 +1502,7 @@
       targetTeam.bench.forEach((b, index) => {
         const card = document.createElement('div');
         card.className = 'bench-card';
-        card.innerHTML = `<div class="p-num" style="color:${currentBenchTeam === 'home' ? '#38bdf8' : '#fb7185'};">No.${escapeHTML(b.number)}</div><div class="p-name">${escapeHTML(b.name)}</div>`;
+        card.innerHTML = `<div class="p-num" style="color:${currentBenchTeam === 'home' ? 'var(--gold-primary)' : '#fb7185'};">No.${escapeHTML(b.number)}</div><div class="p-name">${escapeHTML(b.name)}</div>`;
         card.onclick = () => {
           if (!playerToSubOut) {
             alert("上のコート上の選手をタップしてください。");
