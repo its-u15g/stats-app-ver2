@@ -750,7 +750,7 @@
         <input type="text" id="inputHomeName" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff;">
       </div>
       <div style="margin-bottom: 10px;">
-        <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">自チーム選手一括登録 (背番号 選手名)</label>
+        <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">自チーム選手一括登録【14名ちょうど・背番号重複不可】 (背番号 選手名)</label>
         <textarea id="bulkRosterHome" rows="8" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
       </div>
       <div style="margin-bottom: 8px;">
@@ -758,9 +758,10 @@
         <input type="text" id="inputGuestName" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff;">
       </div>
       <div style="margin-bottom: 10px;">
-        <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">相手チーム選手一括登録</label>
+        <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">相手チーム選手一括登録【14名ちょうど・背番号重複不可】</label>
         <textarea id="bulkRosterGuest" rows="8" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
       </div>
+      <div style="font-size:9px;color:var(--text-sub);margin-top:4px;">各チーム14名：1行目GK、2〜7行目コート、8〜14行目控え。保存時に人数・背番号重複を検査します。</div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
         <button onclick="resetRosterToDefault()" class="btn-danger" style="font-size: 10px;">初期状態</button>
         <div style="display: flex; gap: 6px;">
@@ -810,6 +811,8 @@
     let logs = [];
 
     let currentBenchTeam = 'home';
+    // v2: 7mイベントの紐付けと試合イベントの整合性管理
+    let pending7m = { home: null, guest: null };
 
     let timerSeconds = 0;
     let isTimerRunning = false;
@@ -1016,57 +1019,119 @@
       btn.classList.add('active');
     }
 
+    function makeLogId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function addLog(log) {
+      logs.unshift({
+        id: makeLogId(),
+        sec: timerSeconds,
+        timeStr: formatCurrentTime(),
+        half: currentHalf,
+        ...log
+      });
+      saveLocal();
+      renderLogs();
+      updateDashboard();
+    }
+
+    function getCurrentPlayer(teamKey) {
+      return selectedPlayer && selectedPlayer.teamKey === teamKey ? selectedPlayer : null;
+    }
+
+    function getAllTeamPlayers(teamKey) {
+      const t = teamsData[teamKey];
+      return [t.gk, ...Object.values(t.court), ...t.bench];
+    }
+
+    function validateTeamRoster(team, label) {
+      const players = getAllTeamPlayersFromData(team);
+      if (players.length !== 14) throw new Error(`${label}は14名で登録してください（現在${players.length}名）`);
+      const nums = players.map(p => String(p.number));
+      const duplicates = nums.filter((n, i) => nums.indexOf(n) !== i);
+      if (duplicates.length) throw new Error(`${label}の背番号が重複しています: ${[...new Set(duplicates)].join(', ')}`);
+      if (players.some(p => !/^\d+$/.test(String(p.number)) || !String(p.name).trim())) {
+        throw new Error(`${label}に不正な背番号または空の選手名があります`);
+      }
+    }
+
+    function getAllTeamPlayersFromData(team) {
+      return [team.gk, ...Object.values(team.court || {}), ...(Array.isArray(team.bench) ? team.bench : [])];
+    }
+
+    function normalizeTeamDataV2(team, fallback) {
+      const base = JSON.parse(JSON.stringify(fallback));
+      if (!team || typeof team !== 'object') return base;
+      const player = (p, fb) => ({ number: String(p?.number ?? fb.number), name: String(p?.name ?? fb.name) });
+      base.name = String(team.name ?? base.name);
+      base.gk = player(team.gk, base.gk);
+      for (const pos of ['LW','PV','RW','LB','CB','RB']) base.court[pos] = player(team.court?.[pos], base.court[pos]);
+      const oldBench = Array.isArray(team.bench) ? team.bench : [];
+      base.bench = [];
+      for (let i = 0; i < 7; i++) base.bench.push(player(oldBench[i], fallback.bench[i]));
+      return base;
+    }
+
+    function normalizeTeamsDataV2(data) {
+      return {
+        home: normalizeTeamDataV2(data?.home, DEFAULT_TEAMS.home),
+        guest: normalizeTeamDataV2(data?.guest, DEFAULT_TEAMS.guest)
+      };
+    }
+
     function recordShoot(teamKey, result) {
       const team = teamsData[teamKey];
       const oppKey = teamKey === 'home' ? 'guest' : 'home';
       const oppGk = teamsData[oppKey].gk;
-
-      let pNum = '-';
-      let pName = 'チーム';
-      if (selectedPlayer && selectedPlayer.teamKey === teamKey) {
-        pNum = selectedPlayer.number;
-        pName = selectedPlayer.name;
-      } else if (teamKey === 'guest') {
-        pNum = '相手';
-        pName = `${teamsData.guest.name}`;
+      const p = getCurrentPlayer(teamKey);
+      const pNum = p ? p.number : (teamKey === 'guest' ? '相手' : '-');
+      const pName = p ? p.name : (teamKey === 'guest' ? team.name : 'チーム');
+      // 「7m獲得」はシュートそのものではなく、7m権利の獲得イベントとして記録する。
+      if (result === '7mスロー獲得') {
+        const log = {
+          team: teamKey, teamName: team.name,
+          num: pNum, name: pName,
+          category: '7m獲得', result,
+          zone: '⑩7mスロー', shotType: '-', sevenMeterAttempt: false,
+          related7mLogId: null,
+          oppGkNum: oppGk.number, oppGkName: oppGk.name,
+          gkNum: '-', gkName: '-', targetTeam: '-', targetNum: '-', targetName: '-'
+        };
+        addLog(log);
+        pending7m[teamKey] = logs[0];
+        showToast(`${team.name} 7m獲得 → 7m待ち`);
+        // 7m獲得は攻撃継続。ここでは攻守転換しない。
+        return;
       }
 
-      const category =
-        result === '7mスロー獲得' ? '7m獲得' :
-        result === '7mスロー献上' ? '7m献上' :
-        'シュート';
+      const is7m = selectedZone === '⑩7mスロー';
+      const pending = pending7m[teamKey];
+      let related7mLogId = null;
+      if (is7m && pending) {
+        related7mLogId = pending.id;
+        pending7m[teamKey] = null;
+      }
 
       const log = {
-        id: Date.now() + Math.random().toString(36).substr(2, 4),
-        sec: timerSeconds,
-        timeStr: formatCurrentTime(),
-        half: currentHalf,
-        team: teamKey,
-        teamName: team.name,
-        num: pNum,
-        name: pName,
-        category,
-        result,
-        zone: category === '7m獲得' ? '⑩7mスロー' : selectedZone,
-        shotType: category === 'シュート' && selectedZone === '⑩7mスロー' ? '7m' : '通常',
-        oppGkNum: oppGk.number,
-        oppGkName: oppGk.name,
-        gkNum: result === 'GKセーブ' && teamKey === 'guest' ? teamsData.home.gk.number : '-',
-        gkName: result === 'GKセーブ' && teamKey === 'guest' ? teamsData.home.gk.name : '-',
-        targetTeam: '-',
-        targetNum: '-',
-        targetName: '-'
+        team: teamKey, teamName: team.name,
+        num: pNum, name: pName,
+        category: 'シュート', result,
+        zone: selectedZone,
+        shotType: is7m ? '7m' : '通常',
+        sevenMeterAttempt: is7m,
+        related7mLogId,
+        oppGkNum: oppGk.number, oppGkName: oppGk.name,
+        gkNum: result === 'GKセーブ' ? oppGk.number : '-',
+        gkName: result === 'GKセーブ' ? oppGk.name : '-',
+        targetTeam: '-', targetNum: '-', targetName: '-'
       };
-
-      logs.unshift(log);
-      saveLocal();
-      renderLogs();
-      updateDashboard();
-      showToast(`${team.name} ${result}`);
+      addLog(log);
 
       if (['ゴール', 'GKセーブ', '枠外', 'ポスト直撃'].includes(result)) {
         setPhase(teamKey === 'home' ? 'DF' : 'OF');
       }
+      showToast(`${team.name} ${is7m ? '7m ' : ''}${result}`);
     }
 
     function recordDefensiveAction(detail) {
@@ -1074,32 +1139,15 @@
         showToast('守備担当の選手を選択してください');
         return;
       }
-
-      const target = selectedPlayer && selectedPlayer.teamKey === 'guest' ? selectedPlayer : null;
-      const log = {
-        id: Date.now() + Math.random().toString(36).substr(2, 4),
-        sec: timerSeconds,
-        timeStr: formatCurrentTime(),
-        half: currentHalf,
-        team: 'home',
-        teamName: teamsData.home.name,
-        num: selectedDefender.number,
-        name: selectedDefender.name,
-        category: '守備成功',
-        result: detail,
-        countsAsOpponentTurnover: true,
-        zone: '-',
-        oppGkNum: '-',
-        oppGkName: '-',
-        targetTeam: 'guest',
-        targetNum: target ? target.number : '-',
-        targetName: target ? target.name : '相手選手'
-      };
-
-      logs.unshift(log);
-      saveLocal();
-      renderLogs();
-      updateDashboard();
+      const target = getCurrentPlayer('guest');
+      addLog({
+        team: 'home', teamName: teamsData.home.name,
+        num: selectedDefender.number, name: selectedDefender.name,
+        category: '守備成功', result: detail,
+        countsAsOpponentTurnover: ['スティール/奪取','チャージング獲得','相手ミス誘発','パッシブ奪取'].includes(detail),
+        zone: '-', shotType: '-', oppGkNum: '-', oppGkName: '-',
+        targetTeam: 'guest', targetNum: target ? target.number : '-', targetName: target ? target.name : '相手選手'
+      });
       showToast(`${selectedDefender.name} ${detail}`);
       setPhase('OF');
     }
@@ -1109,148 +1157,78 @@
         showToast('7m献上の守備担当を選択してください');
         return;
       }
-
-      const target = selectedPlayer && selectedPlayer.teamKey === 'guest' ? selectedPlayer : null;
+      const target = getCurrentPlayer('guest');
       const log = {
-        id: Date.now() + Math.random().toString(36).substr(2, 4),
-        sec: timerSeconds,
-        timeStr: formatCurrentTime(),
-        half: currentHalf,
-        team: 'home',
-        teamName: teamsData.home.name,
-        num: selectedDefender.number,
-        name: selectedDefender.name,
-        category: '7m献上',
-        result: '7mスロー献上',
-        zone: '⑩7mスロー',
-        oppGkNum: '-',
-        oppGkName: '-',
-        targetTeam: 'guest',
-        targetNum: target ? target.number : '-',
-        targetName: target ? target.name : '相手選手'
+        team: 'home', teamName: teamsData.home.name,
+        num: selectedDefender.number, name: selectedDefender.name,
+        category: '7m献上', result: '7mスロー献上', zone: '⑩7mスロー', shotType: '-',
+        oppGkNum: '-', oppGkName: '-',
+        targetTeam: 'guest', targetNum: target ? target.number : '-', targetName: target ? target.name : '相手選手'
       };
-
-      logs.unshift(log);
-      saveLocal();
-      renderLogs();
-      updateDashboard();
-      showToast(`${selectedDefender.name} 7m献上`);
+      addLog(log);
+      pending7m.guest = logs[0];
+      showToast(`${selectedDefender.name} 7m献上 → 相手7m待ち`);
+      // 相手が7mを打つまでDFのまま
+      setPhase('DF');
     }
 
     function recordTurnover(teamKey, detail) {
       const team = teamsData[teamKey];
-      let pNum = '-';
-      let pName = 'チーム';
-      if (selectedPlayer && selectedPlayer.teamKey === teamKey) {
-        pNum = selectedPlayer.number;
-        pName = selectedPlayer.name;
-      }
-
-      const log = {
-        id: Date.now() + Math.random().toString(36).substr(2, 4),
-        sec: timerSeconds,
-        timeStr: formatCurrentTime(),
-        half: currentHalf,
-        team: teamKey,
-        teamName: team.name,
-        num: pNum,
-        name: pName,
-        category: 'ターンオーバー',
-        result: detail,
-        zone: '-',
-        oppGkNum: '-',
-        oppGkName: '-',
-        targetTeam: '-',
-        targetNum: '-',
-        targetName: '-'
-      };
-
-      logs.unshift(log);
-      saveLocal();
-      renderLogs();
-      updateDashboard();
+      const p = getCurrentPlayer(teamKey);
+      addLog({
+        team: teamKey, teamName: team.name,
+        num: p ? p.number : '-', name: p ? p.name : 'チーム',
+        category: 'ターンオーバー', result: detail, zone: '-', shotType: '-',
+        oppGkNum: '-', oppGkName: '-', targetTeam: '-', targetNum: '-', targetName: '-'
+      });
       showToast(`${team.name} ${detail}`);
-      setPhase(currentPhase === 'OF' ? 'DF' : 'OF');
+      setPhase(teamKey === 'home' ? 'DF' : 'OF');
     }
 
     function recordUniversalFoul(foulType) {
       const target = currentPhase === 'DF' ? selectedDefender : selectedPlayer;
       const targetTeamKey = target ? target.teamKey : (currentPhase === 'OF' ? 'home' : 'guest');
       const team = teamsData[targetTeamKey];
-
       if (currentPhase === 'DF' && !target) {
-        showToast('守備担当の選手を選択してください');
-        return;
+        showToast('守備担当の選手を選択してください'); return;
       }
-
-      const log = {
-        id: Date.now() + Math.random().toString(36).substr(2, 4),
-        sec: timerSeconds,
-        timeStr: formatCurrentTime(),
-        half: currentHalf,
-        team: targetTeamKey,
-        teamName: team.name,
-        num: target ? target.number : '-',
-        name: target ? target.name : 'チーム',
-        category: '反則・罰則',
-        result: foulType,
-        zone: '-',
-        oppGkNum: '-',
-        oppGkName: '-',
-        targetTeam: '-',
-        targetNum: '-',
-        targetName: '-'
-      };
-
-      logs.unshift(log);
-      saveLocal();
-      renderLogs();
-      updateDashboard();
+      addLog({
+        team: targetTeamKey, teamName: team.name,
+        num: target ? target.number : '-', name: target ? target.name : 'チーム',
+        category: '反則・罰則', result: foulType, zone: '-', shotType: '-',
+        oppGkNum: '-', oppGkName: '-', targetTeam: '-', targetNum: '-', targetName: '-'
+      });
       showToast(`${team.name} ${foulType}`);
     }
 
     function recordFoulWithTarget(teamKey, foulType) {
       const team = teamsData[teamKey];
-      const log = {
-        id: Date.now() + Math.random().toString(36).substr(2, 4),
-        sec: timerSeconds,
-        timeStr: formatCurrentTime(),
-        half: currentHalf,
-        team: teamKey,
-        teamName: team.name,
-        num: selectedPlayer ? selectedPlayer.number : '-',
-        name: selectedPlayer ? selectedPlayer.name : 'チーム',
-        category: '反則・罰則',
-        result: foulType,
-        zone: '-',
-        oppGkNum: '-',
-        oppGkName: '-',
-        targetTeam: '-',
-        targetNum: '-',
-        targetName: '-'
-      };
-      logs.unshift(log);
-      saveLocal();
-      renderLogs();
-      updateDashboard();
+      const p = getCurrentPlayer(teamKey);
+      addLog({
+        team: teamKey, teamName: team.name,
+        num: p ? p.number : '-', name: p ? p.name : 'チーム',
+        category: '反則・罰則', result: foulType, zone: '-', shotType: '-',
+        oppGkNum: '-', oppGkName: '-', targetTeam: '-', targetNum: '-', targetName: '-'
+      });
       showToast(`${team.name} ${foulType}`);
     }
 
     function deleteLastLog() {
       if (logs.length === 0) return;
-      logs.shift();
-      saveLocal();
-      renderLogs();
-      updateDashboard();
-      showToast("1件取り消しました");
+      const removed = logs.shift();
+      if (removed && removed.category === '7m獲得') pending7m.home = null;
+      if (removed && removed.category === '7m献上') pending7m.guest = null;
+      if (removed && removed.related7mLogId) {
+        const related = logs.find(l => l.id === removed.related7mLogId);
+        if (related) pending7m[removed.team] = related;
+      }
+      saveLocal(); renderLogs(); updateDashboard(); showToast("1件取り消しました");
     }
 
     function deleteLogById(id) {
       logs = logs.filter(l => l.id !== id);
-      saveLocal();
-      renderLogs();
-      updateDashboard();
-      showToast("ログ削除");
+      rebuildPending7m();
+      saveLocal(); renderLogs(); updateDashboard(); showToast("ログ削除");
     }
 
     function escapeHTML(value) {
@@ -1539,24 +1517,37 @@
 
     function executeSub(outPlayer, inPlayer, benchIndex) {
       const targetTeam = teamsData[currentBenchTeam];
-      if (outPlayer.pos === 'GK') {
+      const outPos = outPlayer.pos === 'GK' ? 'GK' : (outPlayer.posKey || outPlayer.pos);
+      const inPos = outPos === 'GK' ? 'GK' : outPos;
+      const outName = outPlayer.name;
+      const inName = inPlayer.name;
+      if (outPos === 'GK') {
         const tempGk = targetTeam.gk;
         targetTeam.gk = inPlayer;
         targetTeam.bench[benchIndex] = tempGk;
       } else {
-        const posKeyMap = { 'LW': 'LW', 'PV': 'PV', 'RW': 'RW', 'LB': 'LB', 'CB': 'CB', 'RB': 'RB' };
-        const pos = posKeyMap[outPlayer.posKey || outPlayer.pos];
-        if (pos) {
-          targetTeam.bench[benchIndex] = targetTeam.court[pos];
-          targetTeam.court[pos] = inPlayer;
-        }
+        if (!['LW','PV','RW','LB','CB','RB'].includes(inPos)) { showToast('交代位置を特定できません'); return; }
+        targetTeam.bench[benchIndex] = targetTeam.court[inPos];
+        targetTeam.court[inPos] = inPlayer;
       }
       playerToSubOut = null;
-      saveLocal();
-      renderPlayerCards();
-      renderDefenderCards();
-      renderBenchManager();
-      showToast(`${targetTeam.name} 交代完了`);
+      addLog({
+        team: currentBenchTeam,
+        teamName: targetTeam.name,
+        num: inPlayer.number,
+        name: inPlayer.name,
+        category: '交代',
+        result: `${outName} → ${inName}`,
+        substitution: true,
+        substitutionOutNumber: String(outPlayer.number),
+        substitutionOutName: outPlayer.name,
+        substitutionInNumber: String(inPlayer.number),
+        substitutionInName: inPlayer.name,
+        substitutionPosition: inPos,
+        zone: '-', shotType: '-', oppGkNum: '-', oppGkName: '-', targetTeam: '-', targetNum: '-', targetName: '-'
+      });
+      renderPlayerCards(); renderDefenderCards(); renderBenchManager();
+      showToast(`${targetTeam.name} ${inName} IN / ${outName} OUT`);
     }
 
     function switchRightTab(tabKey) {
@@ -1572,9 +1563,9 @@
 
     function exportCSV() {
       if (logs.length === 0) { showToast("データなし"); return; }
-      const headers = ["ID", "経過秒", "試合時間", "チームID", "チーム名", "背番号", "選手名", "区分", "結果", "エリア"];
+      const headers = ["ID","経過秒","試合時間","前後半","チームID","チーム名","背番号","選手名","区分","結果","エリア","シュート種別","7m試投","関連7mログID","相手GK背番号","相手GK名","GK背番号","GK名","対象チーム","対象背番号","対象選手","相手TO誘発"];
       const csvEscape = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
-      const rows = logs.map(l => [l.id, l.sec, l.timeStr, l.team, l.teamName, l.num, l.name, l.category, l.result, l.zone].map(csvEscape));
+      const rows = logs.map(l => [l.id,l.sec,l.timeStr,l.half,l.team,l.teamName,l.num,l.name,l.category,l.result,l.zone,l.shotType,l.sevenMeterAttempt?'○':'',l.related7mLogId||'',l.oppGkNum,l.oppGkName,l.gkNum,l.gkName,l.targetTeam,l.targetNum,l.targetName,l.countsAsOpponentTurnover?'○':''].map(csvEscape));
       const csv = [headers.map(csvEscape).join(','), ...rows.map(r => r.join(','))].join('\r\n');
       const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -1610,6 +1601,7 @@
     function resetRosterToDefault() {
       if (confirm("初期値に戻しますか？")) {
         teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+        pending7m = { home: null, guest: null };
         saveLocal();
         updateDashboard();
         renderPlayerCards();
@@ -1622,42 +1614,32 @@
     function saveRosterSettings() {
       const hName = document.getElementById('inputHomeName').value.trim();
       const gName = document.getElementById('inputGuestName').value.trim();
-
       const parseRoster = (raw, label) => {
         const lines = raw.split(/\r?\n/).map(v => v.trim()).filter(Boolean);
-        if (lines.length < 7) throw new Error(`${label}は最低7名必要です`);
-        return lines.map((line, i) => {
+        if (lines.length !== 14) throw new Error(`${label}は14名ちょうどで登録してください（現在${lines.length}名）`);
+        const players = lines.map((line, i) => {
           const parts = line.split(/[\s,]+/);
           const number = String(parts[0] || '').trim();
           const name = parts.slice(1).join(' ').trim();
-          if (!/^\d+$/.test(number) || !name) throw new Error(`${label} ${i+1}行目エラー`);
+          if (!/^\d+$/.test(number) || !name) throw new Error(`${label} ${i+1}行目エラー：背番号と選手名を入力してください`);
           return { number, name };
         });
+        const nums = players.map(p => p.number);
+        const dup = nums.filter((n,i) => nums.indexOf(n) !== i);
+        if (dup.length) throw new Error(`${label}の背番号が重複しています: ${[...new Set(dup)].join(', ')}`);
+        return players;
       };
-
       try {
         const home = parseRoster(document.getElementById('bulkRosterHome').value, '自チーム');
         const guest = parseRoster(document.getElementById('bulkRosterGuest').value, '相手チーム');
+        const positions = ['LW','PV','RW','LB','CB','RB'];
         if (hName) teamsData.home.name = hName;
         if (gName) teamsData.guest.name = gName;
-
-        const positions = ['LW', 'PV', 'RW', 'LB', 'CB', 'RB'];
-        teamsData.home.gk = home[0];
-        positions.forEach((pos, i) => { teamsData.home.court[pos] = home[i+1]; });
-        teamsData.home.bench = home.slice(7);
-
-        teamsData.guest.gk = guest[0];
-        positions.forEach((pos, i) => { teamsData.guest.court[pos] = guest[i+1]; });
-        teamsData.guest.bench = guest.slice(7);
-
-        saveLocal();
-        setPhase(currentPhase);
-        updateDashboard();
-        closeRosterModal();
-        showToast("設定を反映しました");
-      } catch (e) {
-        alert(e.message);
-      }
+        teamsData.home.gk = home[0]; positions.forEach((pos,i) => teamsData.home.court[pos] = home[i+1]); teamsData.home.bench = home.slice(7);
+        teamsData.guest.gk = guest[0]; positions.forEach((pos,i) => teamsData.guest.court[pos] = guest[i+1]); teamsData.guest.bench = guest.slice(7);
+        validateTeamRoster(teamsData.home, '自チーム'); validateTeamRoster(teamsData.guest, '相手チーム');
+        saveLocal(); setPhase(currentPhase); updateDashboard(); closeRosterModal(); showToast('14名の設定を反映しました');
+      } catch(e) { alert(e.message); }
     }
 
     function saveLocal() {
@@ -1667,13 +1649,51 @@
       } catch(e) {}
     }
 
+    function normalizeLogV2(log) {
+      const l = (log && typeof log === 'object') ? { ...log } : {};
+      l.id = String(l.id ?? makeLogId());
+      l.sec = Number.isFinite(Number(l.sec)) ? Number(l.sec) : 0;
+      l.timeStr = String(l.timeStr ?? '');
+      l.half = String(l.half ?? (String(l.timeStr).startsWith('後半') ? '後半' : '前半'));
+      l.team = l.team === 'guest' ? 'guest' : 'home';
+      l.teamName = String(l.teamName ?? teamsData[l.team]?.name ?? 'チーム');
+      l.num = String(l.num ?? '-'); l.name = String(l.name ?? 'チーム');
+      l.category = String(l.category ?? ''); l.result = String(l.result ?? '');
+      l.zone = String(l.zone ?? '-'); l.shotType = String(l.shotType ?? '-');
+      l.oppGkNum = String(l.oppGkNum ?? '-'); l.oppGkName = String(l.oppGkName ?? '-');
+      l.gkNum = String(l.gkNum ?? '-'); l.gkName = String(l.gkName ?? '-');
+      l.targetTeam = String(l.targetTeam ?? '-'); l.targetNum = String(l.targetNum ?? '-'); l.targetName = String(l.targetName ?? '-');
+      l.countsAsOpponentTurnover = Boolean(l.countsAsOpponentTurnover || (l.category === '守備成功' && ['スティール/奪取','チャージング獲得','相手ミス誘発','パッシブ奪取'].includes(l.result)));
+      l.sevenMeterAttempt = Boolean(l.sevenMeterAttempt || (l.category === 'シュート' && l.zone === '⑩7mスロー'));
+      l.related7mLogId = l.related7mLogId ? String(l.related7mLogId) : null;
+      return l;
+    }
+
+    function rebuildPending7m() {
+      pending7m = { home: null, guest: null };
+      for (const l of [...logs].reverse()) {
+        if (l.category === '7m獲得' && l.team === 'home') pending7m.home = l;
+        if (l.category === '7m献上' && l.team === 'home') pending7m.guest = l;
+        if (l.category === 'シュート' && l.related7mLogId) pending7m[l.team] = null;
+      }
+    }
+
     function loadLocal() {
       try {
         const t = localStorage.getItem('itsu15g_v3_teams');
         const l = localStorage.getItem('itsu15g_v3_logs');
-        if (t) teamsData = JSON.parse(t);
-        if (l) logs = JSON.parse(l);
-      } catch(e) {}
+        if (t) teamsData = normalizeTeamsDataV2(JSON.parse(t));
+        else teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+        if (l) {
+          const parsed = JSON.parse(l);
+          logs = Array.isArray(parsed) ? parsed.map(normalizeLogV2) : [];
+        }
+        rebuildPending7m();
+      } catch(e) {
+        teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+        logs = [];
+        pending7m = { home: null, guest: null };
+      }
     }
 
     function confirmResetAllLogs() {
