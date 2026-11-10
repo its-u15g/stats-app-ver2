@@ -121,7 +121,7 @@
       height: calc(100vh - 48px);
     }
 
-    .left-panel {
+   .left-panel {
       background: var(--bg-dark);
       border-right: 1px solid var(--card-border);
       display: flex;
@@ -130,6 +130,17 @@
       overflow-y: auto;
       padding: 6px 8px;
       gap: 5px;
+      transition: background 0.25s ease, border-left 0.25s ease; /* スムーズな切り替え効果 */
+    }
+
+    /* ⚡ フェーズごとの画面全体の雰囲気変化 */
+    .left-panel.is-of-mode {
+      border-left: 4px solid var(--gold-primary);
+      background: linear-gradient(180deg, #0a0a0a 0%, #14120a 100%); /* ほんのりゴールドがかった黒 */
+    }
+    .left-panel.is-df-mode {
+      border-left: 4px solid #f43f5e;
+      background: linear-gradient(180deg, #0a0a0a 0%, #1a0508 100%); /* ほんのり赤みがかった黒 */
     }
 
     .phase-bar {
@@ -886,6 +897,7 @@
       const boxDF = document.getElementById('actionBoxDF');
       const title = document.getElementById('playerSelectTitle');
       const defenderContainer = document.getElementById('defenderSelectContainer');
+      const leftPanel = document.querySelector('.left-panel'); // 👈 追加：左パネル全体
 
       if (phase === 'OF') {
         btnOF.className = "btn-phase active-of";
@@ -894,6 +906,12 @@
         boxDF.style.display = "none";
         title.textContent = `②誰が(自チームの選手を選択)`;
         if (defenderContainer) defenderContainer.style.display = "none";
+        
+        // 👈 追加：攻撃時はゴールド系モード
+        if (leftPanel) {
+          leftPanel.classList.remove('is-df-mode');
+          leftPanel.classList.add('is-of-mode');
+        }
       } else {
         btnDF.className = "btn-phase active-df";
         btnOF.className = "btn-phase";
@@ -901,11 +919,16 @@
         boxOF.style.display = "none";
         title.textContent = `②誰が(相手チームの選手を選択)`;
         if (defenderContainer) defenderContainer.style.display = "block";
+        
+        // 👈 追加：守備時はレッド系モードに一変
+        if (leftPanel) {
+          leftPanel.classList.remove('is-of-mode');
+          leftPanel.classList.add('is-df-mode');
+        }
       }
       renderPlayerCards();
       renderDefenderCards();
     }
-
     function renderPlayerCardsGrid(team, targetTeamKey, selectedObj, containerId, isDefender = false) {
       const container = document.getElementById(containerId);
       if (!container) return;
