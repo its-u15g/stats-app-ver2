@@ -612,7 +612,8 @@
             <button onclick="recordDefensiveAction('スティール/奪取')" class="btn-sub gain">スティール/奪取</button>
             <button onclick="recordDefensiveAction('チャージング獲得')" class="btn-sub gain">チャージング獲得</button>
             <button onclick="recordDefensiveAction('相手ミス誘発')" class="btn-sub gain">相手ミス誘発</button>
-            <button onclick="recordDefensiveAction('パッシブ奪取')" class="btn-sub gain">パッシブ奪取</button>
+            <button onclick="recordTeamDefensiveTurnover('相手ミス（非強制）')" class="btn-sub">相手ミス（非強制）</button>
+            <button onclick="recordTeamDefensiveTurnover('パッシブ奪取')" class="btn-sub">パッシブ奪取</button>
           </div>
         </div>
 
@@ -1144,11 +1145,27 @@
         team: 'home', teamName: teamsData.home.name,
         num: selectedDefender.number, name: selectedDefender.name,
         category: '守備成功', result: detail,
-        countsAsOpponentTurnover: ['スティール/奪取','チャージング獲得','相手ミス誘発','パッシブ奪取'].includes(detail),
+        countsAsOpponentTurnover: ['スティール/奪取','チャージング獲得','相手ミス誘発'].includes(detail),
+        individualDefensiveCredit: true,
         zone: '-', shotType: '-', oppGkNum: '-', oppGkName: '-',
         targetTeam: 'guest', targetNum: target ? target.number : '-', targetName: target ? target.name : '相手選手'
       });
       showToast(`${selectedDefender.name} ${detail}`);
+      setPhase('OF');
+    }
+
+    // 特定のDF選手には帰属させず、チームとして相手TOのみを記録する
+    function recordTeamDefensiveTurnover(detail) {
+      addLog({
+        team: 'home', teamName: teamsData.home.name,
+        num: '-', name: 'チーム',
+        category: 'チーム守備', result: detail,
+        countsAsOpponentTurnover: true,
+        individualDefensiveCredit: false,
+        zone: '-', shotType: '-', oppGkNum: '-', oppGkName: '-',
+        targetTeam: 'guest', targetNum: '-', targetName: '-'
+      });
+      showToast(`${teamsData.home.name} ${detail}`);
       setPhase('OF');
     }
 
@@ -1261,7 +1278,13 @@
 
     function isForcedTurnoverAction(log) {
       return log && log.category === '守備成功' &&
-        ['スティール/奪取', 'チャージング獲得', '相手ミス誘発', 'パッシブ奪取'].includes(log.result);
+        ['スティール/奪取', 'チャージング獲得', '相手ミス誘発'].includes(log.result);
+    }
+
+    function isTeamOpponentTurnover(log) {
+      return !!(log && log.countsAsOpponentTurnover &&
+        ((log.category === '守備成功' && ['スティール/奪取', 'チャージング獲得', '相手ミス誘発'].includes(log.result)) ||
+         (log.category === 'チーム守備' && ['相手ミス（非強制）', 'パッシブ奪取'].includes(log.result))));
     }
 
     function updateDashboard() {
@@ -1280,7 +1303,7 @@
 
       const hTO = hLogs.filter(l => l.category === 'ターンオーバー').length;
       const gOwnTO = gLogs.filter(l => l.category === 'ターンオーバー').length;
-      const gForcedTO = logs.filter(l => l.team === 'home' && isForcedTurnoverAction(l)).length;
+      const gForcedTO = logs.filter(l => l.team === 'home' && isTeamOpponentTurnover(l)).length;
       const gTO = gOwnTO + gForcedTO;
 
       const hPoss = hAtt + hTO;
@@ -1370,7 +1393,7 @@
           ? logs.filter(l => l.category === '7m献上' && l.targetTeam === 'guest' && String(l.targetNum) === String(n)).length
           : 0;
         const gained7m = gained7mOwn + gained7mFromTarget;
-        const defenseSuccess = pLogs.filter(l => l.category === '守備成功').length;
+        const defenseSuccess = pLogs.filter(l => l.category === '守備成功' && l.individualDefensiveCredit !== false).length;
         const conceded7m = pLogs.filter(l => l.category === '7m献上').length;
         const ownTO = pLogs.filter(l => l.category === 'ターンオーバー').length;
         const forcedTO = teamKey === 'guest'
@@ -1563,9 +1586,9 @@
 
     function exportCSV() {
       if (logs.length === 0) { showToast("データなし"); return; }
-      const headers = ["ID","経過秒","試合時間","前後半","チームID","チーム名","背番号","選手名","区分","結果","エリア","シュート種別","7m試投","関連7mログID","相手GK背番号","相手GK名","GK背番号","GK名","対象チーム","対象背番号","対象選手","相手TO誘発"];
+      const headers = ["ID","経過秒","試合時間","前後半","チームID","チーム名","背番号","選手名","区分","結果","エリア","シュート種別","7m試投","関連7mログID","相手GK背番号","相手GK名","GK背番号","GK名","対象チーム","対象背番号","対象選手","相手TO誘発","個人DF帰属"];
       const csvEscape = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
-      const rows = logs.map(l => [l.id,l.sec,l.timeStr,l.half,l.team,l.teamName,l.num,l.name,l.category,l.result,l.zone,l.shotType,l.sevenMeterAttempt?'○':'',l.related7mLogId||'',l.oppGkNum,l.oppGkName,l.gkNum,l.gkName,l.targetTeam,l.targetNum,l.targetName,l.countsAsOpponentTurnover?'○':''].map(csvEscape));
+      const rows = logs.map(l => [l.id,l.sec,l.timeStr,l.half,l.team,l.teamName,l.num,l.name,l.category,l.result,l.zone,l.shotType,l.sevenMeterAttempt?'○':'',l.related7mLogId||'',l.oppGkNum,l.oppGkName,l.gkNum,l.gkName,l.targetTeam,l.targetNum,l.targetName,l.countsAsOpponentTurnover?'○':'',l.individualDefensiveCredit?'○':''].map(csvEscape));
       const csv = [headers.map(csvEscape).join(','), ...rows.map(r => r.join(','))].join('\r\n');
       const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -1663,7 +1686,10 @@
       l.oppGkNum = String(l.oppGkNum ?? '-'); l.oppGkName = String(l.oppGkName ?? '-');
       l.gkNum = String(l.gkNum ?? '-'); l.gkName = String(l.gkName ?? '-');
       l.targetTeam = String(l.targetTeam ?? '-'); l.targetNum = String(l.targetNum ?? '-'); l.targetName = String(l.targetName ?? '-');
-      l.countsAsOpponentTurnover = Boolean(l.countsAsOpponentTurnover || (l.category === '守備成功' && ['スティール/奪取','チャージング獲得','相手ミス誘発','パッシブ奪取'].includes(l.result)));
+      l.countsAsOpponentTurnover = Boolean(l.countsAsOpponentTurnover ||
+        (l.category === '守備成功' && ['スティール/奪取','チャージング獲得','相手ミス誘発'].includes(l.result)) ||
+        (l.category === 'チーム守備' && ['相手ミス（非強制）','パッシブ奪取'].includes(l.result)));
+      l.individualDefensiveCredit = Boolean(l.individualDefensiveCredit ?? (l.category === '守備成功' && ['スティール/奪取','チャージング獲得','相手ミス誘発'].includes(l.result)));
       l.sevenMeterAttempt = Boolean(l.sevenMeterAttempt || (l.category === 'シュート' && l.zone === '⑩7mスロー'));
       l.related7mLogId = l.related7mLogId ? String(l.related7mLogId) : null;
       return l;
