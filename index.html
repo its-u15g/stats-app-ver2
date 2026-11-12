@@ -474,6 +474,22 @@
     .btn-success { background: #16a34a; color: #fff; padding: 4px 10px; font-weight: 700; font-size: 10px; }
     .btn-danger { background: #b91c1c; color: #fff; padding: 4px 10px; font-size: 10px; font-weight: 700; }
 
+    /* 中学生向け簡単入力: 大きなボタンと最低限の選択 */
+    .mode-switch {display:flex;gap:5px;padding:5px 8px;background:#111;border-bottom:1px solid #444;align-items:center;flex-shrink:0}
+    .mode-switch button {flex:1;min-height:35px;font-size:13px;font-weight:800;background:#292929;color:#ddd}
+    .mode-switch button.on {background:#eab308;color:#000}
+    .quick-actions {display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px 0}
+    .quick-actions button {min-height:62px;font-size:15px;font-weight:800;color:white;background:#303030;border-radius:8px;border:1px solid #666}
+    .quick-actions button.goal {background:#15803d}.quick-actions button.miss {background:#a52b2b}.quick-actions button.def {background:#145b50}
+    .quick-help {display:none;color:#fef08a;font-size:12px;font-weight:700;padding:6px 2px}
+    body.simple-mode .court-board,body.simple-mode .penalty-bar,body.simple-mode #actionBoxOF,body.simple-mode #actionBoxDF {display:none !important}
+    body.simple-mode .quick-actions,body.simple-mode .quick-help {display:grid}
+    body.simple-mode .player-card {padding:11px 2px;min-height:52px}
+    body.simple-mode .p-num {font-size:17px} body.simple-mode .p-name {font-size:11px}
+    body.simple-mode #defenderSelectContainer {display:none !important}
+    body.simple-mode #activePlayerGrid {display:block}
+    body.simple-mode .left-panel {gap:9px}
+    .always-undo {background:#991b1b;color:white;padding:8px;font-size:12px;font-weight:800}
     /* スマホ用レスポンシブ（700px以下） */
     @media (max-width: 700px) {
       .mobile-view-bar { display: grid; }
@@ -511,6 +527,11 @@
     </div>
   </header>
 
+  <div class="mode-switch" aria-label="入力モード切り替え">
+    <button id="modeSimple" onclick="setInputMode('simple')">かんたん入力</button>
+    <button id="modeDetail" onclick="setInputMode('detail')">詳細入力</button>
+    <button onclick="deleteLastLog()" class="always-undo" style="flex:0 0 auto">↶ 取消</button>
+  </div>
   <div class="mobile-view-bar">
     <button id="mTabInput" onclick="switchMobileView('input')" class="btn-m-view active">⚡ 入力操作画面</button>
     <button id="mTabAnalysis" onclick="switchMobileView('analysis')" class="btn-m-view">📊 分析・ログ確認</button>
@@ -577,6 +598,23 @@
         </div>
       </div>
 
+      <div id="quickHelp" class="quick-help">① 選手を選ぶ（分からなければ未選択でもOK） → ② 結果を押す</div>
+      <div id="quickOF" class="quick-actions">
+        <button class="goal" onclick="quickRecord('goal')">🥅 ゴール</button>
+        <button onclick="quickRecord('save')">🧤 GKセーブ</button>
+        <button class="miss" onclick="quickRecord('miss')">❌ シュートミス</button>
+        <button class="miss" onclick="quickRecord('pass')">↪ パス・キャッチミス</button>
+        <button onclick="quickRecord('other')">⚠ その他TO</button>
+        <button onclick="quickRecord('7m')">7m獲得</button>
+      </div>
+      <div id="quickDF" class="quick-actions">
+        <button class="miss" onclick="quickRecord('conceded')">🥅 被失点</button>
+        <button class="def" onclick="quickRecord('gksave')">🧤 自GKセーブ</button>
+        <button onclick="quickRecord('opmiss')">❌ 相手シュートミス</button>
+        <button class="def" onclick="quickRecord('steal')">🛡 スティール</button>
+        <button onclick="quickRecord('opto')">⚠ 相手ミス</button>
+        <button onclick="quickRecord('passive')">✋ パッシブ奪取</button>
+      </div>
       <div class="action-container">
         <div id="actionBoxOF" style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
           <div class="action-row-5">
@@ -806,6 +844,8 @@
 
     let teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
     let currentPhase = 'OF';
+    let inputMode = 'simple';
+    let simpleDefender = null;
     let selectedPlayer = null;
     let selectedDefender = null;
     let selectedZone = '②カットイン・PV';
@@ -820,6 +860,44 @@
     let timerInterval = null;
     let currentHalf = '前半';
     let halfSeconds = { '前半': 0, '後半': 0 };
+
+    function setInputMode(mode) {
+      inputMode = mode === 'detail' ? 'detail' : 'simple';
+      document.body.classList.toggle('simple-mode', inputMode === 'simple');
+      document.getElementById('modeSimple').classList.toggle('on', inputMode === 'simple');
+      document.getElementById('modeDetail').classList.toggle('on', inputMode === 'detail');
+      document.getElementById('quickOF').style.display = inputMode === 'simple' && currentPhase === 'OF' ? 'grid' : 'none';
+      document.getElementById('quickDF').style.display = inputMode === 'simple' && currentPhase === 'DF' ? 'grid' : 'none';
+      document.getElementById('playerSelectTitle').textContent = inputMode === 'simple'
+        ? (currentPhase === 'OF' ? '① 自チーム選手（任意）' : '① 守備した自チーム選手（任意）')
+        : (currentPhase === 'OF' ? '②誰が(自チームの選手を選択)' : '②誰が(相手チームの選手を選択)');
+      document.getElementById('quickHelp').textContent = currentPhase === 'OF'
+        ? '① 選手を選ぶ（任意） → ② 結果を押す'
+        : '① スティールした選手を選ぶ（その他は不要） → ② 結果を押す';
+      try {localStorage.setItem('itsu15g_input_mode',inputMode);} catch(e) {}
+      renderPlayerCards(); renderDefenderCards();
+    }
+
+    function quickRecord(type) {
+      if (currentPhase === 'OF') {
+        if (type === 'goal') recordShoot('home','ゴール');
+        else if (type === 'save') recordShoot('home','GKセーブ');
+        else if (type === 'miss') recordShoot('home','枠外');
+        else if (type === 'pass') recordTurnover('home','パス・キャッチミス');
+        else if (type === 'other') recordTurnover('home','その他ミス');
+        else if (type === '7m') recordShoot('home','7mスロー獲得');
+      } else {
+        if (type === 'conceded') recordShoot('guest','ゴール');
+        else if (type === 'gksave') recordShoot('guest','GKセーブ');
+        else if (type === 'opmiss') recordShoot('guest','枠外');
+        else if (type === 'steal') {
+          if (!simpleDefender) {showToast('スティールした自チーム選手を選んでください');return;}
+          selectedDefender = simpleDefender;
+          recordDefensiveAction('スティール/奪取');
+        } else if (type === 'opto') recordTeamDefensiveTurnover('相手ミス（非強制）');
+        else if (type === 'passive') recordTeamDefensiveTurnover('パッシブ奪取');
+      }
+    }
 
     function switchMobileView(viewType) {
       const btnIn = document.getElementById('mTabInput');
@@ -842,6 +920,7 @@
       timerSeconds = Number(halfSeconds[currentHalf] || 0);
       updateTimerDisplay();
       document.getElementById('btnHalf').textContent = currentHalf;
+      saveLocal();
       showToast(`${currentHalf}に切り替えました`);
     }
 
@@ -882,6 +961,7 @@
       const s = timerSeconds % 60;
       document.getElementById('gameTimerDisplay').textContent = 
         `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      if (timerSeconds % 5 === 0) saveLocal();
     }
 
     function formatCurrentTime() {
@@ -894,6 +974,7 @@
       currentPhase = phase;
       selectedPlayer = null;
       selectedDefender = null;
+      simpleDefender = null;
 
       const btnOF = document.getElementById('btnPhaseOF');
       const btnDF = document.getElementById('btnPhaseDF');
@@ -932,6 +1013,7 @@
       }
       renderPlayerCards();
       renderDefenderCards();
+      setInputMode(inputMode);
     }
     function renderPlayerCardsGrid(team, targetTeamKey, selectedObj, containerId, isDefender = false) {
       const container = document.getElementById(containerId);
@@ -964,7 +1046,9 @@
             selectedDefender = isSel ? null : { ...p, teamKey: 'home' };
             renderDefenderCards();
           } else {
-            if (selectedPlayer && String(selectedPlayer.number) === String(p.number) && selectedPlayer.teamKey === targetTeamKey) {
+            if (inputMode === 'simple' && currentPhase === 'DF') {
+              simpleDefender = isSel ? null : { ...p, teamKey: 'home' };
+            } else if (selectedPlayer && String(selectedPlayer.number) === String(p.number) && selectedPlayer.teamKey === targetTeamKey) {
               selectedPlayer = null;
             } else {
               selectedPlayer = { ...p, teamKey: targetTeamKey };
@@ -990,9 +1074,9 @@
     }
 
     function renderPlayerCards() {
-      const targetTeamKey = (currentPhase === 'OF') ? 'home' : 'guest';
+      const targetTeamKey = inputMode === 'simple' ? 'home' : ((currentPhase === 'OF') ? 'home' : 'guest');
       const targetTeam = teamsData[targetTeamKey];
-      renderPlayerCardsGrid(targetTeam, targetTeamKey, selectedPlayer, 'activePlayerGrid', false);
+      renderPlayerCardsGrid(targetTeam, targetTeamKey, inputMode === 'simple' && currentPhase === 'DF' ? simpleDefender : selectedPlayer, 'activePlayerGrid', false);
     }
 
     function renderDefenderCards() {
@@ -1027,6 +1111,7 @@
     function addLog(log) {
       logs.unshift({
         id: makeLogId(),
+        phaseBefore: currentPhase,
         sec: timerSeconds,
         timeStr: formatCurrentTime(),
         half: currentHalf,
@@ -1101,12 +1186,16 @@
         };
         addLog(log);
         pending7m[teamKey] = logs[0];
+        if (inputMode === 'detail') {
+          const sevenButton = [...document.querySelectorAll('.btn-court-zone')].find(b => b.textContent.includes('7mスロー'));
+          if (sevenButton) setZone('⑩7mスロー', sevenButton);
+        }
         showToast(`${team.name} 7m獲得 → 7m待ち`);
         // 7m獲得は攻撃継続。ここでは攻守転換しない。
         return;
       }
 
-      const is7m = selectedZone === '⑩7mスロー';
+      const is7m = Boolean(pending7m[teamKey]) || (inputMode === 'detail' && selectedZone === '⑩7mスロー');
       const pending = pending7m[teamKey];
       let related7mLogId = null;
       if (is7m && pending) {
@@ -1118,7 +1207,7 @@
         team: teamKey, teamName: team.name,
         num: pNum, name: pName,
         category: 'シュート', result,
-        zone: selectedZone,
+        zone: is7m ? '⑩7mスロー' : (inputMode === 'simple' ? '未指定' : selectedZone),
         shotType: is7m ? '7m' : '通常',
         sevenMeterAttempt: is7m,
         related7mLogId,
@@ -1130,6 +1219,7 @@
       addLog(log);
 
       if (['ゴール', 'GKセーブ', '枠外', 'ポスト直撃'].includes(result)) {
+        // リバウンド等で攻撃継続の場合はOF/DFボタンで手動修正可能
         setPhase(teamKey === 'home' ? 'DF' : 'OF');
       }
       showToast(`${team.name} ${is7m ? '7m ' : ''}${result}`);
@@ -1233,13 +1323,14 @@
     function deleteLastLog() {
       if (logs.length === 0) return;
       const removed = logs.shift();
+      if (removed && removed.phaseBefore) setPhase(removed.phaseBefore);
       if (removed && removed.category === '7m獲得') pending7m.home = null;
       if (removed && removed.category === '7m献上') pending7m.guest = null;
       if (removed && removed.related7mLogId) {
         const related = logs.find(l => l.id === removed.related7mLogId);
         if (related) pending7m[removed.team] = related;
       }
-      saveLocal(); renderLogs(); updateDashboard(); showToast("1件取り消しました");
+      rebuildPending7m(); saveLocal(); renderLogs(); updateDashboard(); showToast("1件取り消しました");
     }
 
     function deleteLogById(id) {
@@ -1669,6 +1760,7 @@
       try {
         localStorage.setItem('itsu15g_v3_teams', JSON.stringify(teamsData));
         localStorage.setItem('itsu15g_v3_logs', JSON.stringify(logs));
+        localStorage.setItem('itsu15g_timer_state',JSON.stringify({timerSeconds,halfSeconds,currentHalf}));
       } catch(e) {}
     }
 
@@ -1715,6 +1807,8 @@
           logs = Array.isArray(parsed) ? parsed.map(normalizeLogV2) : [];
         }
         rebuildPending7m();
+        const ts = JSON.parse(localStorage.getItem('itsu15g_timer_state') || 'null');
+        if (ts) {timerSeconds = Number(ts.timerSeconds)||0;halfSeconds = ts.halfSeconds || {'前半':0,'後半':0};currentHalf = ts.currentHalf === '後半' ? '後半' : '前半';}
       } catch(e) {
         teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
         logs = [];
@@ -1741,7 +1835,10 @@
 
     window.onload = function() {
       loadLocal();
+      try {inputMode = localStorage.getItem('itsu15g_input_mode') === 'detail' ? 'detail' : 'simple';} catch(e) {}
       setPhase('OF');
+      updateTimerDisplay();
+      document.getElementById('btnHalf').textContent = currentHalf;
       renderLogs();
       updateDashboard();
     };
