@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ITS U-15 | ハンドボールリアルタイム分析PRO</title>
   <style>
     /* ================= リッチブラック＆ゴールド Theme ================= */
@@ -304,8 +304,8 @@
     .player-card.active { background: var(--gold-dark); border-color: var(--gold-primary); color: #000; }
     .player-card.active .p-num, .player-card.active .p-name { color: #000 !important; }
     .player-card.active-opp { background: #881337; border-color: #f43f5e; color: #fff; }
-    .p-num { font-size: 13px; font-weight: 800; color: #fff; font-family: monospace; }
-    .p-name { font-size: 9px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .p-num { display: block; font-size: 13px; font-weight: 800; color: #fff; font-family: monospace; }
+    .p-name { display: block; font-size: 9px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
     /* ③ 結果ボタンエリア */
     .action-container {
@@ -438,6 +438,7 @@
     .kpi-val { font-size: 11px; font-weight: 800; color: var(--gold-light); }
 
     .table-box {
+      flex-shrink: 0;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 5px;
@@ -499,6 +500,34 @@
       body.show-analysis .left-panel { display: none !important; }
       body.show-analysis .right-panel { display: flex !important; }
     }
+    main { min-height: 0; grid-template-columns: minmax(0,52fr) minmax(0,48fr); }
+    .left-panel > * { flex-shrink: 0; }
+    .player-card, .bench-card { min-width: 0; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #fef08a; outline-offset: -2px; }
+    #saveWarning, #pendingBar { padding: 6px 8px; background: #451a03; color: #fef08a; }
+    #saveWarning { flex-shrink: 0; }
+    #reboundBar { display: flex; gap: 8px; align-items: center; color: #fef08a; }
+    #reboundBar[hidden] { display: none; }
+    #reboundBar button { min-height: 36px; }
+    .penalty-bar { height: auto; grid-template-columns: auto repeat(4, minmax(0, 1fr)); }
+    .penalty-bar label { font-size: 10px; }
+    #penaltyTeam { display: block; }
+    #pendingBar button { margin-left: 8px; min-height: 32px; }
+    .header-tools { display: flex; gap: 4px; }
+    @media (max-width: 700px) {
+      body { height: 100dvh; width: 100%; }
+      header { height: auto; min-height: 48px; flex-wrap: wrap; gap: 3px; padding: 3px 5px; }
+      .header-left { flex-wrap: wrap; gap: 4px; }
+      .brand-title { display: none; }
+      .timer-box, .score-board { padding-inline: 4px; }
+      header button, .mode-switch button, .btn-phase, .player-card, .bench-card { min-height: 44px; }
+      .phase-bar { height: auto; }
+      .action-row-5, .action-container { height: auto; flex: 0 0 auto; }
+      .btn-act, .btn-sub, .btn-pen { min-height: 44px; font-size: 11px; }
+      .btn-court-zone { min-height: 24px; }
+      .court-board { height: auto; min-height: 150px; }
+      input, textarea { font-size: 16px !important; }
+    }
   </style>
 </head>
 <body class="">
@@ -516,17 +545,18 @@
         <button onclick="toggleHalf()" id="btnHalf" class="btn-half">前半</button>
         <span id="gameTimerDisplay" class="timer-display">00:00</span>
         <button onclick="toggleTimer()" id="btnTimerCtrl" class="btn-timer-ctrl">開始</button>
-        <button onclick="resetTimer()" class="btn-secondary" style="padding: 3px 4px;">R</button>
+        <button onclick="resetTimer()" aria-label="タイマーをリセット" class="btn-secondary" style="padding: 3px 4px;">R</button>
       </div>
     </div>
 
-    <div style="display: flex; gap: 4px;">
+    <div class="header-tools">
       <button onclick="openRosterModal()" class="btn-secondary" style="font-size: 9px; padding: 4px 6px;">設定</button>
       <button onclick="exportCSV()" class="btn-success" style="font-size: 9px; padding: 4px 6px;">CSV</button>
       <button onclick="confirmResetAllLogs()" class="btn-danger" style="font-size: 9px; padding: 4px 6px;">消去</button>
     </div>
   </header>
 
+  <div id="saveWarning" role="alert" hidden></div>
   <div class="mode-switch" aria-label="入力モード切り替え">
     <button id="modeSimple" onclick="setInputMode('simple')">かんたん入力</button>
     <button id="modeDetail" onclick="setInputMode('detail')">詳細入力</button>
@@ -540,6 +570,9 @@
   <!-- ==================== MAIN ==================== -->
   <main>
     <section class="left-panel" id="panelInput">
+      <div id="pendingBar" role="status" hidden>
+        <span id="pendingText"></span><button class="btn-secondary" onclick="cancelPending7m()">7m待機解除</button>
+      </div>
       <div class="phase-bar">
         <button id="btnPhaseOF" onclick="setPhase('OF')" class="btn-phase active-of">自チーム 攻撃 (OF)</button>
         <button id="btnPhaseDF" onclick="setPhase('DF')" class="btn-phase">自チーム 守備 (DF)</button>
@@ -656,12 +689,18 @@
         </div>
 
         <div class="penalty-bar">
+          <label style="color:#ddd">罰則対象
+            <select id="penaltyTeam" aria-label="罰則対象チーム">
+              <option value="home">自チーム</option><option value="guest">相手</option>
+            </select>
+          </label>
           <button onclick="recordUniversalFoul('警告(Y)')" class="btn-pen" style="color: #fde047;">警告(Y)</button>
           <button onclick="recordUniversalFoul('2分退場')" class="btn-pen" style="color: #f87171;">2分退場</button>
           <button onclick="recordUniversalFoul('レッド(失格)')" class="btn-pen" style="color: #ef4444;">失格(赤)</button>
           <button onclick="recordUniversalFoul('ブルー(追放)')" class="btn-pen" style="color: #60a5fa;">追放(青)</button>
         </div>
       </div>
+      <div id="reboundBar" hidden><button class="btn-secondary" onclick="retainPossession()">直前のシュート後も攻撃継続</button></div>
     </section>
 
     <!-- 右ペイン: 分析・確認エリア -->
@@ -694,8 +733,8 @@
               <div class="kpi-cell"><div class="kpi-title">ミス率</div><div class="kpi-val" id="dashHomeTOPct" style="color:#f87171;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">GK阻止</div><div class="kpi-val" id="dashHomeGK" style="color:#fbbf24;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">得点/試投</div><div class="kpi-val" id="dashHomeShots" style="font-size:9px;">0/0</div></div>
-              <div class="kpi-cell"><div class="kpi-title">Poss</div><div class="kpi-val" id="dashHomePoss" style="font-size:9px;">0</div></div>
-              <div class="kpi-cell"><div class="kpi-title">OE</div><div class="kpi-val" id="dashHomeOE" style="color:var(--gold-light); font-size:9px;">0.00</div></div>
+              <div class="kpi-cell"><div class="kpi-title" title="攻撃終了の試投＋TOによる簡易集計">Poss</div><div class="kpi-val" id="dashHomePoss" style="font-size:9px;">0</div></div>
+              <div class="kpi-cell"><div class="kpi-title" title="得点÷簡易Poss">OE</div><div class="kpi-val" id="dashHomeOE" style="color:var(--gold-light); font-size:9px;">0.00</div></div>
             </div>
           </div>
 
@@ -706,8 +745,8 @@
               <div class="kpi-cell"><div class="kpi-title">ミス率</div><div class="kpi-val" id="dashGuestTOPct" style="color:#f87171;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">GK阻止</div><div class="kpi-val" id="dashGuestGK" style="color:#fbbf24;">0%</div></div>
               <div class="kpi-cell"><div class="kpi-title">得点/試投</div><div class="kpi-val" id="dashGuestShots" style="font-size:9px;">0/0</div></div>
-              <div class="kpi-cell"><div class="kpi-title">Poss</div><div class="kpi-val" id="dashGuestPoss" style="font-size:9px;">0</div></div>
-              <div class="kpi-cell"><div class="kpi-title">OE</div><div class="kpi-val" id="dashGuestOE" style="color:var(--gold-light); font-size:9px;">0.00</div></div>
+              <div class="kpi-cell"><div class="kpi-title" title="試投＋TOによる簡易集計">Poss</div><div class="kpi-val" id="dashGuestPoss" style="font-size:9px;">0</div></div>
+              <div class="kpi-cell"><div class="kpi-title" title="得点÷簡易Poss">OE</div><div class="kpi-val" id="dashGuestOE" style="color:var(--gold-light); font-size:9px;">0.00</div></div>
             </div>
           </div>
         </div>
@@ -800,7 +839,7 @@
         <label style="font-size: 10px; color: #cbd5e1; font-weight: 700;">相手チーム選手一括登録【14名ちょうど・背番号重複不可】</label>
         <textarea id="bulkRosterGuest" rows="8" style="width: 100%; background: #000; border: 1px solid var(--card-border); padding: 5px; color: #fff; font-family: monospace; font-size: 11px;"></textarea>
       </div>
-      <div style="font-size:9px;color:var(--text-sub);margin-top:4px;">各チーム14名：1行目GK、2〜7行目コート、8〜14行目控え。保存時に人数・背番号重複を検査します。</div>
+      <div style="font-size:11px;color:var(--text-sub);margin-top:4px;">各チーム14名。1行目GK、2〜7行目コート、8〜14行目控え。試合ログの記録後は、名簿とチーム名の変更を停止します。試合中の布陣変更は「交代」を使用してください。</div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
         <button onclick="resetRosterToDefault()" class="btn-danger" style="font-size: 10px;">初期状態</button>
         <div style="display: flex; gap: 6px;">
@@ -859,10 +898,26 @@
     let isTimerRunning = false;
     let timerInterval = null;
     let currentHalf = '前半';
+    const DEFAULT_ZONE = '②カットイン・PV';
+    const SEVEN_ZONE = '⑩7mスロー';
+    const STORAGE_KEY = 'itsu15g_match_v4';
+    let storedSnapshot = null;
+    let storageBlocked = false;
+    let timerStartedAt = 0;
+    let timerBase = 0;
+    const endsPossession = log => !log.retainedPossession && ['シュート', 'ターンオーバー', '守備成功', 'チーム守備'].includes(log.category);
+    const phaseAfterLog = log => !endsPossession(log)
+      ? log.phaseBefore
+      : (log.category === '守備成功' || log.category === 'チーム守備' || log.team === 'guest' ? 'OF' : 'DF');
     let halfSeconds = { '前半': 0, '後半': 0 };
 
     function setInputMode(mode) {
-      inputMode = mode === 'detail' ? 'detail' : 'simple';
+      const nextMode = mode === 'detail' ? 'detail' : 'simple';
+      if (nextMode !== inputMode) {
+        selectedPlayer = selectedDefender = simpleDefender = null;
+        resetZone();
+      }
+      inputMode = nextMode;
       document.body.classList.toggle('simple-mode', inputMode === 'simple');
       document.getElementById('modeSimple').classList.toggle('on', inputMode === 'simple');
       document.getElementById('modeDetail').classList.toggle('on', inputMode === 'detail');
@@ -874,7 +929,7 @@
       document.getElementById('quickHelp').textContent = currentPhase === 'OF'
         ? '① 選手を選ぶ（任意） → ② 結果を押す'
         : '① スティールした選手を選ぶ（その他は不要） → ② 結果を押す';
-      try {localStorage.setItem('itsu15g_input_mode',inputMode);} catch(e) {}
+      saveLocal();
       renderPlayerCards(); renderDefenderCards();
     }
 
@@ -915,53 +970,63 @@
     }
 
     function toggleHalf() {
+      stopTimer();
       halfSeconds[currentHalf] = timerSeconds;
       currentHalf = currentHalf === '前半' ? '後半' : '前半';
-      timerSeconds = Number(halfSeconds[currentHalf] || 0);
+      timerSeconds = halfSeconds[currentHalf];
       updateTimerDisplay();
       document.getElementById('btnHalf').textContent = currentHalf;
       saveLocal();
       showToast(`${currentHalf}に切り替えました`);
     }
 
+    function syncTimer() {
+      if (isTimerRunning) timerSeconds = timerBase + Math.floor((performance.now() - timerStartedAt) / 1000);
+    }
+
+    function stopTimer() {
+      syncTimer();
+      clearInterval(timerInterval);
+      isTimerRunning = false;
+      const btn = document.getElementById('btnTimerCtrl');
+      btn.textContent = timerSeconds ? '再開' : '開始';
+      btn.className = 'btn-timer-ctrl';
+      updateTimerDisplay();
+    }
+
     function toggleTimer() {
       const btn = document.getElementById('btnTimerCtrl');
       if (isTimerRunning) {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
-        btn.textContent = "再開";
-        btn.className = "btn-timer-ctrl";
+        stopTimer();
       } else {
+        timerBase = timerSeconds;
+        timerStartedAt = performance.now();
         isTimerRunning = true;
-        btn.textContent = "停止";
-        btn.className = "btn-timer-ctrl running";
+        btn.textContent = '停止';
+        btn.className = 'btn-timer-ctrl running';
         timerInterval = setInterval(() => {
-          timerSeconds++;
+          const previous = timerSeconds;
+          syncTimer();
           updateTimerDisplay();
-        }, 1000);
+          if (Math.floor(previous / 5) !== Math.floor(timerSeconds / 5)) saveLocal();
+        }, 250);
       }
+      saveLocal();
     }
 
     function resetTimer() {
-      if (confirm("タイマーを00:00にリセットしますか？")) {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
-        timerSeconds = 0;
-        halfSeconds = { '前半': 0, '後半': 0 };
-        currentHalf = '前半';
-        document.getElementById('btnHalf').textContent = currentHalf;
-        updateTimerDisplay();
-        document.getElementById('btnTimerCtrl').textContent = "開始";
-        document.getElementById('btnTimerCtrl').className = "btn-timer-ctrl";
-      }
+      if (!confirm('前後半のタイマーを00:00にリセットしますか？記録済みの時刻は保持されます。')) return;
+      stopTimer();
+      timerSeconds = 0;
+      halfSeconds = { '前半': 0, '後半': 0 };
+      currentHalf = '前半';
+      document.getElementById('btnHalf').textContent = currentHalf;
+      stopTimer();
+      saveLocal();
     }
 
     function updateTimerDisplay() {
-      const m = Math.floor(timerSeconds / 60);
-      const s = timerSeconds % 60;
-      document.getElementById('gameTimerDisplay').textContent = 
-        `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-      if (timerSeconds % 5 === 0) saveLocal();
+      document.getElementById('gameTimerDisplay').textContent = formatCurrentTime().split(' ')[1];
     }
 
     function formatCurrentTime() {
@@ -972,6 +1037,8 @@
 
     function setPhase(phase) {
       currentPhase = phase;
+      document.getElementById('penaltyTeam').value = 'home';
+      resetZone();
       selectedPlayer = null;
       selectedDefender = null;
       simpleDefender = null;
@@ -1035,11 +1102,12 @@
         const isSel = selectedObj && String(selectedObj.number) === String(p.number) && (!isDefender || selectedObj.teamKey === targetTeamKey);
         const activeClass = isSel ? (isDefender || targetTeamKey === 'home' ? 'active' : 'active-opp') : '';
 
-        const card = document.createElement('div');
+        const card = document.createElement('button');
+        card.type = 'button';
         card.className = `player-card ${activeClass}`;
         card.innerHTML = `
-          <div class="p-num">No.${escapeHTML(p.number)}</div>
-          <div class="p-name">${escapeHTML(p.name)}</div>
+          <span class="p-num">No.${escapeHTML(p.number)}</span>
+          <span class="p-name">${escapeHTML(p.name)}</span>
         `;
         card.onclick = () => {
           if (isDefender) {
@@ -1093,6 +1161,7 @@
     function clearSelectedPlayer() {
       selectedPlayer = null;
       selectedDefender = null;
+      simpleDefender = null;
       renderPlayerCards();
       renderDefenderCards();
       showToast("選択を解除");
@@ -1100,8 +1169,25 @@
 
     function setZone(zone, btn) {
       selectedZone = zone;
-      document.querySelectorAll('.btn-court-zone').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      document.querySelectorAll('.btn-court-zone').forEach(b => b.classList.toggle('active', b === btn));
+    }
+
+    function resetZone() {
+      setZone(DEFAULT_ZONE, document.querySelector(`[onclick^="setZone('${DEFAULT_ZONE}'"]`));
+    }
+
+    function updatePendingDisplay() {
+      const teamKey = pending7m.home ? 'home' : pending7m.guest ? 'guest' : null;
+      document.getElementById('pendingBar').hidden = !teamKey;
+      document.getElementById('pendingText').textContent = teamKey ? `${teamsData[teamKey].name}の7m試投待ち` : '';
+    }
+
+    function cancelPending7m() {
+      const team = pending7m.home ? 'home' : pending7m.guest ? 'guest' : null;
+      if (!team) return;
+      resetZone();
+      addLog({ team, teamName: teamsData[team].name, num: '-', name: 'チーム',
+        category: '7m待機解除', result: '7m待機解除', zone: '-' });
     }
 
     function makeLogId() {
@@ -1109,6 +1195,7 @@
     }
 
     function addLog(log) {
+      syncTimer();
       logs.unshift({
         id: makeLogId(),
         phaseBefore: currentPhase,
@@ -1117,8 +1204,12 @@
         half: currentHalf,
         ...log
       });
-      saveLocal();
-      renderLogs();
+      rebuildPending7m();
+      const nextPhase = phaseAfterLog(logs[0]);
+      if (endsPossession(logs[0])) setPhase(nextPhase);
+      else saveLocal();
+      if (document.getElementById('tabBtnLogs').classList.contains('active')) renderLogs();
+      else document.getElementById('logCountBadge').textContent = logs.length;
       updateDashboard();
     }
 
@@ -1134,7 +1225,7 @@
     function validateTeamRoster(team, label) {
       const players = getAllTeamPlayersFromData(team);
       if (players.length !== 14) throw new Error(`${label}は14名で登録してください（現在${players.length}名）`);
-      const nums = players.map(p => String(p.number));
+      const nums = players.map(p => String(p.number).replace(/^0+(?=\d)/, ''));
       const duplicates = nums.filter((n, i) => nums.indexOf(n) !== i);
       if (duplicates.length) throw new Error(`${label}の背番号が重複しています: ${[...new Set(duplicates)].join(', ')}`);
       if (players.some(p => !/^\d+$/.test(String(p.number)) || !String(p.name).trim())) {
@@ -1167,6 +1258,11 @@
     }
 
     function recordShoot(teamKey, result) {
+      if (currentPhase !== (teamKey === 'home' ? 'OF' : 'DF')) return;
+      if (result === '7mスロー獲得' && (pending7m.home || pending7m.guest)) {
+        showToast('待機中の7mを記録または解除してください');
+        return;
+      }
       const team = teamsData[teamKey];
       const oppKey = teamKey === 'home' ? 'guest' : 'home';
       const oppGk = teamsData[oppKey].gk;
@@ -1185,7 +1281,6 @@
           gkNum: '-', gkName: '-', targetTeam: '-', targetNum: '-', targetName: '-'
         };
         addLog(log);
-        pending7m[teamKey] = logs[0];
         if (inputMode === 'detail') {
           const sevenButton = [...document.querySelectorAll('.btn-court-zone')].find(b => b.textContent.includes('7mスロー'));
           if (sevenButton) setZone('⑩7mスロー', sevenButton);
@@ -1200,7 +1295,6 @@
       let related7mLogId = null;
       if (is7m && pending) {
         related7mLogId = pending.id;
-        pending7m[teamKey] = null;
       }
 
       const log = {
@@ -1218,19 +1312,17 @@
       };
       addLog(log);
 
-      if (['ゴール', 'GKセーブ', '枠外', 'ポスト直撃'].includes(result)) {
-        // リバウンド等で攻撃継続の場合はOF/DFボタンで手動修正可能
-        setPhase(teamKey === 'home' ? 'DF' : 'OF');
-      }
       showToast(`${team.name} ${is7m ? '7m ' : ''}${result}`);
     }
 
     function recordDefensiveAction(detail) {
+      if (currentPhase !== 'DF') return;
       if (!selectedDefender) {
         showToast('守備担当の選手を選択してください');
         return;
       }
       const target = getCurrentPlayer('guest');
+      const defenderName = selectedDefender.name;
       addLog({
         team: 'home', teamName: teamsData.home.name,
         num: selectedDefender.number, name: selectedDefender.name,
@@ -1240,12 +1332,13 @@
         zone: '-', shotType: '-', oppGkNum: '-', oppGkName: '-',
         targetTeam: 'guest', targetNum: target ? target.number : '-', targetName: target ? target.name : '相手選手'
       });
-      showToast(`${selectedDefender.name} ${detail}`);
-      setPhase('OF');
+      showToast(`${defenderName} ${detail}`);
     }
 
     // 特定のDF選手には帰属させず、チームとして相手TOのみを記録する
     function recordTeamDefensiveTurnover(detail) {
+      if (currentPhase !== 'DF') return;
+      const target = getCurrentPlayer('guest');
       addLog({
         team: 'home', teamName: teamsData.home.name,
         num: '-', name: 'チーム',
@@ -1253,13 +1346,17 @@
         countsAsOpponentTurnover: true,
         individualDefensiveCredit: false,
         zone: '-', shotType: '-', oppGkNum: '-', oppGkName: '-',
-        targetTeam: 'guest', targetNum: '-', targetName: '-'
+        targetTeam: 'guest', targetNum: target?.number ?? '-', targetName: target?.name ?? '-'
       });
       showToast(`${teamsData.home.name} ${detail}`);
-      setPhase('OF');
     }
 
     function record7mConceded() {
+      if (currentPhase !== 'DF') return;
+      if (pending7m.home || pending7m.guest) {
+        showToast('待機中の7mを記録または解除してください');
+        return;
+      }
       if (!selectedDefender) {
         showToast('7m献上の守備担当を選択してください');
         return;
@@ -1273,13 +1370,12 @@
         targetTeam: 'guest', targetNum: target ? target.number : '-', targetName: target ? target.name : '相手選手'
       };
       addLog(log);
-      pending7m.guest = logs[0];
       showToast(`${selectedDefender.name} 7m献上 → 相手7m待ち`);
-      // 相手が7mを打つまでDFのまま
-      setPhase('DF');
+
     }
 
     function recordTurnover(teamKey, detail) {
+      if (currentPhase !== (teamKey === 'home' ? 'OF' : 'DF')) return;
       const team = teamsData[teamKey];
       const p = getCurrentPlayer(teamKey);
       addLog({
@@ -1289,16 +1385,13 @@
         oppGkNum: '-', oppGkName: '-', targetTeam: '-', targetNum: '-', targetName: '-'
       });
       showToast(`${team.name} ${detail}`);
-      setPhase(teamKey === 'home' ? 'DF' : 'OF');
     }
 
     function recordUniversalFoul(foulType) {
-      const target = currentPhase === 'DF' ? selectedDefender : selectedPlayer;
-      const targetTeamKey = target ? target.teamKey : (currentPhase === 'OF' ? 'home' : 'guest');
+      const targetTeamKey = document.getElementById('penaltyTeam').value;
+      const target = targetTeamKey === 'home' && currentPhase === 'DF' ? selectedDefender : getCurrentPlayer(targetTeamKey);
       const team = teamsData[targetTeamKey];
-      if (currentPhase === 'DF' && !target) {
-        showToast('守備担当の選手を選択してください'); return;
-      }
+      if (!target && !confirm(`${team.name}の罰則を選手未指定で記録しますか？`)) return;
       addLog({
         team: targetTeamKey, teamName: team.name,
         num: target ? target.number : '-', name: target ? target.name : 'チーム',
@@ -1321,22 +1414,47 @@
     }
 
     function deleteLastLog() {
-      if (logs.length === 0) return;
-      const removed = logs.shift();
-      if (removed && removed.phaseBefore) setPhase(removed.phaseBefore);
-      if (removed && removed.category === '7m獲得') pending7m.home = null;
-      if (removed && removed.category === '7m献上') pending7m.guest = null;
-      if (removed && removed.related7mLogId) {
-        const related = logs.find(l => l.id === removed.related7mLogId);
-        if (related) pending7m[removed.team] = related;
+      const removed = logs[0];
+      if (!removed) return;
+      if (removed.category === '交代') {
+        const team = teamsData[removed.team];
+        const pos = removed.substitutionPosition;
+        const current = pos === 'GK' ? team.gk : team.court[pos];
+        const benchIndex = team.bench.findIndex(p => p.number === removed.substitutionOutNumber);
+        if (current?.number !== removed.substitutionInNumber || benchIndex < 0) {
+          showToast('交代時の布陣を確認できないため取り消せません');
+          return;
+        }
+        const outgoing = team.bench[benchIndex];
+        if (pos === 'GK') team.gk = outgoing;
+        else team.court[pos] = outgoing;
+        team.bench[benchIndex] = current;
+        playerToSubOut = null;
       }
-      rebuildPending7m(); saveLocal(); renderLogs(); updateDashboard(); showToast("1件取り消しました");
+      logs.shift();
+      rebuildPending7m();
+      setPhase(removed.phaseBefore || currentPhase);
+      renderLogs();
+      updateDashboard();
+      showToast('1件取り消しました');
     }
 
     function deleteLogById(id) {
-      logs = logs.filter(l => l.id !== id);
+      if (logs[0]?.id === id) {
+        deleteLastLog();
+        return;
+      }
+      const target = logs.find(l => l.id === id);
+      if (!target) return;
+      if (target.category === '交代') {
+        showToast('交代は直前取消で布陣と一緒に戻してください');
+        return;
+      }
+      if (!confirm('このログを削除しますか？')) return;
+      logs = logs.filter(l => l.id !== id).map(l =>
+        l.related7mLogId === id ? { ...l, related7mLogId: null } : l);
       rebuildPending7m();
-      saveLocal(); renderLogs(); updateDashboard(); showToast("ログ削除");
+      saveLocal(); renderLogs(); updateDashboard(); showToast('ログ削除');
     }
 
     function escapeHTML(value) {
@@ -1359,17 +1477,13 @@
           <td style="color:${l.team === 'home' ? 'var(--gold-primary)' : '#fb7185'}; font-weight:700;">${escapeHTML(l.teamName)}</td>
           <td>No.${escapeHTML(l.num)} ${escapeHTML(l.name)}</td>
           <td style="font-weight:700;">${escapeHTML(l.result)}</td>
-          <td>${escapeHTML(l.zone)}</td>
-          <td><button onclick="deleteLogById('${l.id}')" style="background:#450a0a; color:#fca5a5; font-size:9px; padding:1px 4px;">削</button></td>
+          <td>${escapeHTML(l.zone)}${l.retainedPossession ? '（攻撃継続）' : ''}</td>
+          <td><button type="button" style="background:#450a0a; color:#fca5a5; font-size:9px; padding:1px 4px;">削</button></td>
         `;
+        tr.querySelector('button').onclick = () => deleteLogById(l.id);
         tbody.appendChild(tr);
       });
       document.getElementById('logCountBadge').textContent = logs.length;
-    }
-
-    function isForcedTurnoverAction(log) {
-      return log && log.category === '守備成功' &&
-        ['スティール/奪取', 'チャージング獲得', '相手ミス誘発'].includes(log.result);
     }
 
     function isTeamOpponentTurnover(log) {
@@ -1378,7 +1492,21 @@
          (log.category === 'チーム守備' && ['相手ミス（非強制）', 'パッシブ奪取'].includes(log.result))));
     }
 
+    function retainPossession() {
+      const shot = logs[0];
+      if (shot?.category !== 'シュート' || shot.result === 'ゴール' || shot.retainedPossession) return;
+      shot.retainedPossession = true;
+      rebuildPending7m();
+      setPhase(shot.team === 'home' ? 'OF' : 'DF');
+      renderLogs();
+      updateDashboard();
+      showToast('攻撃継続を反映しました');
+    }
+
     function updateDashboard() {
+      const latest = logs[0];
+      document.getElementById('reboundBar').hidden = latest?.category !== 'シュート' ||
+        latest.result === 'ゴール' || Boolean(latest.retainedPossession);
       const hLogs = logs.filter(l => l.team === 'home');
       const gLogs = logs.filter(l => l.team === 'guest');
 
@@ -1397,8 +1525,8 @@
       const gForcedTO = logs.filter(l => l.team === 'home' && isTeamOpponentTurnover(l)).length;
       const gTO = gOwnTO + gForcedTO;
 
-      const hPoss = hAtt + hTO;
-      const gPoss = gAtt + gTO;
+      const hPoss = hShots.filter(endsPossession).length + hTO;
+      const gPoss = gShots.filter(endsPossession).length + gTO;
       const hOE = hPoss > 0 ? (hGoals / hPoss).toFixed(2) : '0.00';
       const gOE = gPoss > 0 ? (gGoals / gPoss).toFixed(2) : '0.00';
       const hTOPct = hPoss > 0 ? ((hTO / hPoss) * 100).toFixed(1) : '0.0';
@@ -1406,9 +1534,13 @@
 
       const hSaves = gShots.filter(l => l.result === 'GKセーブ').length;
       const gSaves = hShots.filter(l => l.result === 'GKセーブ').length;
-      const hGkPct = gAtt > 0 ? ((hSaves / gAtt) * 100).toFixed(1) : '0.0';
-      const gGkPct = hAtt > 0 ? ((gSaves / hAtt) * 100).toFixed(1) : '0.0';
+      const gOnTarget = hSaves + gGoals;
+      const hOnTarget = gSaves + hGoals;
+      const hGkPct = gOnTarget ? ((hSaves / gOnTarget) * 100).toFixed(1) : '0.0';
+      const gGkPct = hOnTarget ? ((gSaves / hOnTarget) * 100).toFixed(1) : '0.0';
 
+      document.getElementById('dashHomeName').textContent = teamsData.home.name;
+      document.getElementById('dashGuestName').textContent = teamsData.guest.name;
       document.getElementById('headerHomeScore').textContent = `自 ${hGoals}`;
       document.getElementById('headerGuestScore').textContent = `${gGoals} 相手`;
 
@@ -1462,7 +1594,9 @@
       const rosterNums = roster.map(p => String(p.number));
       const eventNums = teamLogs.map(l => String(l.num)).filter(n => n && n !== '-' && n !== '相手');
       const gkNums = oppShots.map(l => String(l.oppGkNum)).filter(n => n && n !== '-');
-      const nums = Array.from(new Set([...rosterNums, ...eventNums, ...gkNums]));
+      const targeted = teamKey === 'guest' ? logs.filter(l => l.targetTeam === 'guest' &&
+        (isTeamOpponentTurnover(l) || l.category === '7m献上') && /^\d+$/.test(l.targetNum)) : [];
+      const nums = Array.from(new Set([...rosterNums, ...eventNums, ...gkNums, ...targeted.map(l => l.targetNum)]));
       nums.sort((a,b) => {
         const na = parseInt(a, 10), nb = parseInt(b, 10);
         if (Number.isNaN(na) && Number.isNaN(nb)) return a.localeCompare(b);
@@ -1474,7 +1608,7 @@
       nums.forEach(n => {
         const pLogs = teamLogs.filter(l => String(l.num) === String(n));
         const rosterPlayer = roster.find(p => String(p.number) === String(n));
-        const name = pLogs.length > 0 ? pLogs[0].name : (rosterPlayer ? rosterPlayer.name : `No.${n}`);
+        const name = pLogs[0]?.name ?? rosterPlayer?.name ?? targeted.find(l => l.targetNum === n)?.targetName ?? oppShots.find(l => l.oppGkNum === n)?.oppGkName ?? `No.${n}`;
         const shots = pLogs.filter(l => l.category === 'シュート');
         const goals = shots.filter(l => l.result === 'ゴール').length;
         const att = shots.length;
@@ -1488,11 +1622,11 @@
         const conceded7m = pLogs.filter(l => l.category === '7m献上').length;
         const ownTO = pLogs.filter(l => l.category === 'ターンオーバー').length;
         const forcedTO = teamKey === 'guest'
-          ? logs.filter(l => isForcedTurnoverAction(l) && l.targetTeam === 'guest' && String(l.targetNum) === String(n)).length
+          ? logs.filter(l => isTeamOpponentTurnover(l) && l.targetTeam === 'guest' && String(l.targetNum) === String(n)).length
           : 0;
         const to = ownTO + forcedTO;
         const foul2m = pLogs.filter(l => l.result === '2分退場').length;
-        const faced = oppShots.filter(l => String(l.oppGkNum) === String(n));
+        const faced = oppShots.filter(l => String(l.oppGkNum) === n && ['ゴール', 'GKセーブ'].includes(l.result));
         const saves = faced.filter(l => l.result === 'GKセーブ').length;
 
         const misses = att - goals;
@@ -1529,7 +1663,7 @@
         '①左サイド', '②カットイン・PV', '③右サイド',
         '④左側ミドル', '⑤中央ミドル', '⑥右側ミドル',
         '⑦左側ロング', '⑧中央ロング', '⑨右側ロング',
-        '⑩7mスロー', '⚡速攻(FB)'
+        '⑩7mスロー', '⚡速攻(FB)', '未指定'
       ];
 
       zoneList.forEach(z => {
@@ -1592,9 +1726,10 @@
 
       const createBenchCard = (p) => {
         const isSel = playerToSubOut && String(playerToSubOut.number) === String(p.number);
-        const card = document.createElement('div');
+        const card = document.createElement('button');
+        card.type = 'button';
         card.className = `player-card ${isSel ? (currentBenchTeam === 'home' ? 'active' : 'active-opp') : ''}`;
-        card.innerHTML = `<div class="p-num">No.${escapeHTML(p.number)}</div><div class="p-name">${escapeHTML(p.name)}</div>`;
+        card.innerHTML = `<span class="p-num">No.${escapeHTML(p.number)}</span><span class="p-name">${escapeHTML(p.name)}</span>`;
         card.onclick = () => {
           playerToSubOut = p;
           renderBenchManager();
@@ -1615,9 +1750,10 @@
       courtGrid.appendChild(div2);
 
       targetTeam.bench.forEach((b, index) => {
-        const card = document.createElement('div');
+        const card = document.createElement('button');
+        card.type = 'button';
         card.className = 'bench-card';
-        card.innerHTML = `<div class="p-num" style="color:${currentBenchTeam === 'home' ? 'var(--gold-primary)' : '#fb7185'};">No.${escapeHTML(b.number)}</div><div class="p-name">${escapeHTML(b.name)}</div>`;
+        card.innerHTML = `<span class="p-num" style="color:${currentBenchTeam === 'home' ? 'var(--gold-primary)' : '#fb7185'};">No.${escapeHTML(b.number)}</span><span class="p-name">${escapeHTML(b.name)}</span>`;
         card.onclick = () => {
           if (!playerToSubOut) {
             alert("上のコート上の選手をタップしてください。");
@@ -1645,6 +1781,7 @@
         targetTeam.court[inPos] = inPlayer;
       }
       playerToSubOut = null;
+      selectedPlayer = selectedDefender = simpleDefender = null;
       addLog({
         team: currentBenchTeam,
         teamName: targetTeam.name,
@@ -1658,6 +1795,7 @@
         substitutionInNumber: String(inPlayer.number),
         substitutionInName: inPlayer.name,
         substitutionPosition: inPos,
+        substitutionBenchIndex: benchIndex,
         zone: '-', shotType: '-', oppGkNum: '-', oppGkName: '-', targetTeam: '-', targetNum: '-', targetName: '-'
       });
       renderPlayerCards(); renderDefenderCards(); renderBenchManager();
@@ -1677,9 +1815,13 @@
 
     function exportCSV() {
       if (logs.length === 0) { showToast("データなし"); return; }
-      const headers = ["ID","経過秒","試合時間","前後半","チームID","チーム名","背番号","選手名","区分","結果","エリア","シュート種別","7m試投","関連7mログID","相手GK背番号","相手GK名","GK背番号","GK名","対象チーム","対象背番号","対象選手","相手TO誘発","個人DF帰属"];
-      const csvEscape = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
-      const rows = logs.map(l => [l.id,l.sec,l.timeStr,l.half,l.team,l.teamName,l.num,l.name,l.category,l.result,l.zone,l.shotType,l.sevenMeterAttempt?'○':'',l.related7mLogId||'',l.oppGkNum,l.oppGkName,l.gkNum,l.gkName,l.targetTeam,l.targetNum,l.targetName,l.countsAsOpponentTurnover?'○':'',l.individualDefensiveCredit?'○':''].map(csvEscape));
+      const headers = ["ID","経過秒","試合時間","前後半","チームID","チーム名","背番号","選手名","区分","結果","エリア","シュート種別","7m試投","関連7mログID","相手GK背番号","相手GK名","GK背番号","GK名","対象チーム","対象背番号","対象選手","相手TO誘発","個人DF帰属","攻撃継続","交代OUT背番号","交代IN背番号","交代ポジション"];
+      const csvEscape = value => {
+        const s = String(value ?? '');
+        const text = /^[\s]*[=+@-]/.test(s) && s !== '-' ? "'" + s : s;
+        return `"${text.replace(/"/g, '""')}"`;
+      };
+      const rows = logs.map(l => [l.id,l.sec,l.timeStr,l.half,l.team,l.teamName,l.num,l.name,l.category,l.result,l.zone,l.shotType,l.sevenMeterAttempt?'○':'',l.related7mLogId||'',l.oppGkNum,l.oppGkName,l.gkNum,l.gkName,l.targetTeam,l.targetNum,l.targetName,l.countsAsOpponentTurnover?'○':'',l.individualDefensiveCredit?'○':'',l.retainedPossession?'○':'',l.substitutionOutNumber,l.substitutionInNumber,l.substitutionPosition].map(csvEscape));
       const csv = [headers.map(csvEscape).join(','), ...rows.map(r => r.join(','))].join('\r\n');
       const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -1689,6 +1831,7 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast("CSV出力完了");
     }
 
@@ -1713,10 +1856,11 @@
     function closeRosterModal() { document.getElementById('rosterModal').style.display = 'none'; }
 
     function resetRosterToDefault() {
+      if (logs.length) { showToast('CSVを保存し、ログを消去してから名簿を初期化してください'); return; }
       if (confirm("初期値に戻しますか？")) {
         teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
-        pending7m = { home: null, guest: null };
-        saveLocal();
+        playerToSubOut = null;
+        setPhase(currentPhase);
         updateDashboard();
         renderPlayerCards();
         renderDefenderCards();
@@ -1733,7 +1877,7 @@
         if (lines.length !== 14) throw new Error(`${label}は14名ちょうどで登録してください（現在${lines.length}名）`);
         const players = lines.map((line, i) => {
           const parts = line.split(/[\s,]+/);
-          const number = String(parts[0] || '').trim();
+          const number = String(parts[0] || '').trim().replace(/^0+(?=\d)/, '');
           const name = parts.slice(1).join(' ').trim();
           if (!/^\d+$/.test(number) || !name) throw new Error(`${label} ${i+1}行目エラー：背番号と選手名を入力してください`);
           return { number, name };
@@ -1747,6 +1891,13 @@
         const home = parseRoster(document.getElementById('bulkRosterHome').value, '自チーム');
         const guest = parseRoster(document.getElementById('bulkRosterGuest').value, '相手チーム');
         const positions = ['LW','PV','RW','LB','CB','RB'];
+        if (logs.length && (['home','guest'].some(key => {
+          const proposed = key === 'home' ? home : guest;
+          return getAllTeamPlayers(key).some((p, i) => p.number !== proposed[i].number || p.name !== proposed[i].name);
+        }) || (hName && hName !== teamsData.home.name) || (gName && gName !== teamsData.guest.name))) {
+          throw new Error('名簿・チーム名の変更は、CSVを保存し、試合ログを消去してから行ってください');
+        }
+        playerToSubOut = null;
         if (hName) teamsData.home.name = hName;
         if (gName) teamsData.guest.name = gName;
         teamsData.home.gk = home[0]; positions.forEach((pos,i) => teamsData.home.court[pos] = home[i+1]); teamsData.home.bench = home.slice(7);
@@ -1756,17 +1907,34 @@
       } catch(e) { alert(e.message); }
     }
 
+    function warnSave(message) {
+      const warning = document.getElementById('saveWarning');
+      warning.textContent = message;
+      warning.hidden = !message;
+    }
+
     function saveLocal() {
+      if (storageBlocked) return;
       try {
-        localStorage.setItem('itsu15g_v3_teams', JSON.stringify(teamsData));
-        localStorage.setItem('itsu15g_v3_logs', JSON.stringify(logs));
-        localStorage.setItem('itsu15g_timer_state',JSON.stringify({timerSeconds,halfSeconds,currentHalf}));
-      } catch(e) {}
+        if (localStorage.getItem(STORAGE_KEY) !== storedSnapshot) {
+          storageBlocked = true;
+          warnSave('別のタブで記録が更新されました。この画面の変更は保存されません。続ける前に、必要なログをCSVで保存してください。');
+          return;
+        }
+        syncTimer();
+        const snapshot = JSON.stringify({ teamsData, logs, timerSeconds, halfSeconds, currentHalf, currentPhase, inputMode });
+        if (snapshot !== storedSnapshot) localStorage.setItem(STORAGE_KEY, snapshot);
+        storedSnapshot = snapshot;
+        warnSave('');
+      } catch {
+        warnSave('端末に保存できません。画面を閉じる前にCSVを保存してください。');
+      }
     }
 
     function normalizeLogV2(log) {
       const l = (log && typeof log === 'object') ? { ...log } : {};
       l.id = String(l.id ?? makeLogId());
+      if (l.phaseBefore !== 'DF' && l.phaseBefore !== 'OF') l.phaseBefore = null;
       l.sec = Number.isFinite(Number(l.sec)) ? Number(l.sec) : 0;
       l.timeStr = String(l.timeStr ?? '');
       l.half = String(l.half ?? (String(l.timeStr).startsWith('後半') ? '後半' : '前半'));
@@ -1783,6 +1951,7 @@
         (l.category === 'チーム守備' && ['相手ミス（非強制）','パッシブ奪取'].includes(l.result)));
       l.individualDefensiveCredit = Boolean(l.individualDefensiveCredit ?? (l.category === '守備成功' && ['スティール/奪取','チャージング獲得','相手ミス誘発'].includes(l.result)));
       l.sevenMeterAttempt = Boolean(l.sevenMeterAttempt || (l.category === 'シュート' && l.zone === '⑩7mスロー'));
+      l.retainedPossession = l.category === 'シュート' && l.result !== 'ゴール' && l.retainedPossession === true;
       l.related7mLogId = l.related7mLogId ? String(l.related7mLogId) : null;
       return l;
     }
@@ -1790,40 +1959,71 @@
     function rebuildPending7m() {
       pending7m = { home: null, guest: null };
       for (const l of [...logs].reverse()) {
+        if (l.category === 'シュート' || endsPossession(l)) pending7m = { home: null, guest: null };
+        if (l.category === '7m待機解除') pending7m[l.team] = null;
         if (l.category === '7m獲得' && l.team === 'home') pending7m.home = l;
         if (l.category === '7m献上' && l.team === 'home') pending7m.guest = l;
-        if (l.category === 'シュート' && l.related7mLogId) pending7m[l.team] = null;
       }
+      updatePendingDisplay();
     }
 
     function loadLocal() {
-      try {
-        const t = localStorage.getItem('itsu15g_v3_teams');
-        const l = localStorage.getItem('itsu15g_v3_logs');
-        if (t) teamsData = normalizeTeamsDataV2(JSON.parse(t));
-        else teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
-        if (l) {
-          const parsed = JSON.parse(l);
-          logs = Array.isArray(parsed) ? parsed.map(normalizeLogV2) : [];
-        }
-        rebuildPending7m();
-        const ts = JSON.parse(localStorage.getItem('itsu15g_timer_state') || 'null');
-        if (ts) {timerSeconds = Number(ts.timerSeconds)||0;halfSeconds = ts.halfSeconds || {'前半':0,'後半':0};currentHalf = ts.currentHalf === '後半' ? '後半' : '前半';}
-      } catch(e) {
-        teamsData = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
-        logs = [];
-        pending7m = { home: null, guest: null };
+      const read = key => JSON.parse(localStorage.getItem(key) ?? 'null');
+      let failed = false;
+      function restore(readValue, apply) {
+        try { apply(readValue()); } catch { failed = true; }
       }
+      function restoreLogs(value) {
+        if (value === null) return;
+        if (!Array.isArray(value) || value.some(l => !l || typeof l !== 'object' || Array.isArray(l))) throw new Error();
+        logs = value.map(normalizeLogV2);
+      }
+      function restoreClock(value) {
+        if (!value || typeof value !== 'object') return;
+        const sec = n => Number.isSafeInteger(n) && n >= 0 ? n : 0;
+        timerSeconds = sec(value.timerSeconds);
+        halfSeconds = { '前半': sec(value.halfSeconds?.前半), '後半': sec(value.halfSeconds?.後半) };
+        currentHalf = value.currentHalf === '後半' ? '後半' : '前半';
+      }
+      restore(() => localStorage.getItem(STORAGE_KEY), raw => { storedSnapshot = raw; });
+      if (storedSnapshot !== null) {
+        restore(() => JSON.parse(storedSnapshot), value => {
+          if (!value || !Array.isArray(value.logs) || !value.teamsData) throw new Error();
+          teamsData = normalizeTeamsDataV2(value.teamsData);
+          restoreLogs(value.logs);
+          restoreClock(value);
+          currentPhase = value.currentPhase === 'DF' ? 'DF' : 'OF';
+          inputMode = value.inputMode === 'detail' ? 'detail' : 'simple';
+        });
+      } else {
+        restore(() => read('itsu15g_v3_teams'), value => { teamsData = normalizeTeamsDataV2(value); });
+        restore(() => read('itsu15g_v3_logs'), restoreLogs);
+        restore(() => read('itsu15g_timer_state'), restoreClock);
+        restore(() => localStorage.getItem('itsu15g_input_mode'), mode => { inputMode = mode === 'detail' ? 'detail' : 'simple'; });
+        currentPhase = logs.map(phaseAfterLog).find(p => p === 'OF' || p === 'DF') || 'OF';
+      }
+      if (failed) {
+        storageBlocked = true;
+        warnSave('保存データを読み込めませんでした。元データは保持されています。表示できるログはCSVに保存できます。');
+      }
+      rebuildPending7m();
     }
 
     function confirmResetAllLogs() {
-      if (confirm("すべての試合ログを消去しますか？")) {
-        logs = [];
-        saveLocal();
-        renderLogs();
-        updateDashboard();
-        showToast("ログ消去");
-      }
+      if (!confirm('試合ログをすべて消去し、前半00:00・攻撃から新しく始めますか？名簿は保持されます。')) return;
+      logs = [];
+      stopTimer();
+      timerSeconds = 0;
+      halfSeconds = { '前半': 0, '後半': 0 };
+      currentHalf = '前半';
+      playerToSubOut = null;
+      stopTimer();
+      document.getElementById('btnHalf').textContent = currentHalf;
+      rebuildPending7m();
+      setPhase('OF');
+      renderLogs();
+      updateDashboard();
+      showToast('ログを消去しました');
     }
 
     function showToast(msg) {
@@ -1833,11 +2033,32 @@
       setTimeout(() => el.classList.remove('show'), 1500);
     }
 
+    let lastResultTap = null;
+    document.getElementById('panelInput').addEventListener('click', event => {
+      if (!event.isTrusted || !event.detail) return;
+      const button = event.target.closest('.quick-actions button, #actionBoxOF button, #actionBoxDF button');
+      if (!button) return;
+      const tap = { x: event.clientX, y: event.clientY, at: performance.now() };
+      if (lastResultTap && tap.at - lastResultTap.at < 300 &&
+          Math.abs(tap.x - lastResultTap.x) < 12 && Math.abs(tap.y - lastResultTap.y) < 12) {
+        event.stopPropagation();
+        return;
+      }
+      lastResultTap = tap;
+    }, true);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') saveLocal();
+    });
+    window.addEventListener('pagehide', saveLocal);
+    window.addEventListener('storage', event => {
+      if (event.key === STORAGE_KEY && event.newValue !== storedSnapshot) saveLocal();
+    });
+
     window.onload = function() {
       loadLocal();
-      try {inputMode = localStorage.getItem('itsu15g_input_mode') === 'detail' ? 'detail' : 'simple';} catch(e) {}
-      setPhase('OF');
-      updateTimerDisplay();
+      setPhase(currentPhase);
+      stopTimer();
       document.getElementById('btnHalf').textContent = currentHalf;
       renderLogs();
       updateDashboard();
